@@ -1,0 +1,15 @@
+# Artefactos de compilacion (regenerables con Compilar.sh / Compilar.bat)
+build/
+Compilador.jar
+
+# Dependencias de test (CorrerTests.sh las descarga en lib/)
+lib/
+
+# PDF generado desde DOCUMENTACION.tex
+DOCUMENTACION.pdf
+
+# Auxiliares de LaTeX
+*.aux
+*.log
+*.out
+missfont.log

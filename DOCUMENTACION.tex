@@ -1,0 +1,315 @@
+% Documentación de la Etapa 1 - generado a partir de DOCUMENTACION.md
+% Compilar con:  pdflatex DOCUMENTACION.tex
+\documentclass[11pt,a4paper]{article}
+
+\usepackage[utf8]{inputenc}
+\usepackage[margin=2.5cm]{geometry}
+\usepackage{url}
+
+\title{Etapa 1 - Analizador Léxico de MiniJava}
+\author{Compiladores e Intérpretes --- UNS, 2026}
+\date{}
+
+% Esta instalacion TeX no tiene las fuentes TS1 (text companion): se evitan los
+% simbolos que las requieren (vinetas de itemize, llaves via \{ en \texttt).
+\renewcommand{\labelitemi}{$\bullet$}
+
+\begin{document}
+
+\sloppy
+
+\maketitle
+
+\noindent
+Implementación de un analizador lexico para MiniJava junto con un módulo principal de
+consola. El analizador se construye a partir de un autómata finito determinista
+implementado manualmente (un método por estado).
+
+\section{Estructura del proyecto}
+
+{\footnotesize
+\begin{verbatim}
+codigo/
+|-- Compilar.sh / Compilar.bat          Compila y genera Compilador.jar
+|-- CorrerTests.sh / CorrerTests.bat    Compila y ejecuta los testers JUnit
+|-- lib/                                Jars de JUnit 4 y Hamcrest (se autodescargan)
+|-- src/main/java/
+|   |-- moduloprincipal/
+|   |   \-- ModuloPrincipal.java        Modulo principal (interfaz con el usuario)
+|   |-- analizadorlexico/
+|   |   |-- AnalizadorLexico.java       Automata finito determinista
+|   |   |-- Token.java                  Representacion de un token (nombre, lexema, linea)
+|   |   \-- ExcepcionLexica.java        Excepcion propagada ante un error lexico
+|   \-- sourcemanager/
+|       |-- SourceManager.java          Interfaz provista por la catedra
+|       |-- SourceManagerImpl.java      Implementacion provista (por lineas, referencia)
+|       \-- SourceManagerEficiente.java Implementacion propia por caracteres (se usa)
+|-- src/test/java/test/                 Testers JUnit provistos por la catedra
+\-- resources/
+    |-- sinErrores/                     Casos de prueba sin errores
+    \-- conErrores/                     Casos de prueba con errores
+\end{verbatim}
+}
+
+\section{Componentes}
+
+\subsection{Módulo principal (ModuloPrincipal)}
+
+Recibe por parámetro la ruta del archivo fuente MiniJava (acepta cualquier extensión):
+
+\begin{verbatim}
+java -jar Compilador.jar programa1.java
+\end{verbatim}
+
+Asocia el archivo a un \texttt{SourceManagerEficiente}, crea el analizador léxico y le solicita
+tokens hasta recibir el token de fin de archivo. Cada token se imprime por pantalla con el
+formato \texttt{(NombreToken,Lexema,NroLinea)}. Al finalizar sin errores se imprime
+\texttt{[SinErrores]}.
+
+Ante un error léxico, la excepción \texttt{ExcepcionLexica} es capturada por el módulo principal,
+que reporta el mensaje de error y el código de error, finalizando la ejecución.
+
+\subsection{Manejador de archivos eficiente (SourceManagerEficiente)}
+
+Implementa la interfaz \texttt{SourceManager} leyendo el fuente de a caracteres (en lugar de
+líneas como la implementación provista). Características:
+
+\begin{itemize}
+  \item Lectura por caracteres con \texttt{InputStreamReader} (UTF-8) sobre \texttt{PushbackReader}.
+  \item Reconoce las tres convenciones de salto de línea (LF, CR y CRLF), normalizándolas a un
+        único \verb!\n!. La secuencia \verb!\r\n! no se
+        contabiliza como dos saltos.
+  \item \texttt{getLineNumber()} devuelve la línea del último caracter devuelto. Un caracter de salto
+        de línea pertenece a la línea que termina, y el número de línea se incrementa al leer
+        el siguiente caracter. De esta forma el token EOF reporta la línea del final físico
+        del archivo (por ejemplo, un archivo de 21 líneas que termina con salto de línea
+        reporta el EOF en la línea 22).
+\end{itemize}
+
+La implementación provista por la cátedra (\texttt{SourceManagerImpl}) se incluye como
+referencia, pero no se utiliza en la ejecución porque su conteo de líneas difiere en el
+token EOF cuando el archivo termina con un salto de línea.
+
+\subsection{Analizador lexico (AnalizadorLexico)}
+
+Autómata finito determinista implementado con un método por estado. El estado inicial
+\texttt{e0} descarta espacios en blanco y comentarios, y despacha al estado correspondiente
+según el primer caracter del lexema. Cada método consulta \texttt{caracterActual} (un caracter
+de adelanto que nunca se consume al finalizar un token), lo agrega al lexema y avanza
+leyendo el próximo caracter.
+
+Las palabras reservadas se resuelven consultando una tabla: al construir un identificador
+de método o variable se verifica si su lexema corresponde a una palabra reservada y, en
+ese caso, se devuelve el token de palabra reservada correspondiente.
+
+\section{Tokens del lenguaje}
+
+Se adoptaron los siguientes nombres para los tokens.
+
+\subsection{Palabras reservadas}
+
+Se reconocen con un identificador de método o variable y se devuelven con nombre
+\verb!pr_<palabra>!:
+
+\noindent
+\texttt{class} \texttt{extends} \texttt{interface} \texttt{implements} \texttt{static}
+\texttt{boolean} \texttt{char} \texttt{int} \texttt{void}
+\texttt{public} \texttt{if} \texttt{else} \texttt{while} \texttt{return} \texttt{var}
+\texttt{this} \texttt{new} \texttt{null} \texttt{true} \texttt{false}
+
+\medskip
+\noindent
+Los nombres de tokens siguen el ejemplo de las pautas de la Etapa 1: \texttt{litString}
+para los literales string, \texttt{idMV} para identificadores de método o variable,
+\verb!pr_<palabra>! para palabras reservadas, \texttt{op<simbolo>} para operadores y
+\texttt{llaveC} para puntuación.
+
+\subsection{Identificadores}
+
+\begin{center}
+\begin{tabular}{|l|l|l|}
+\hline
+\textbf{Token} & \textbf{Expresión regular} & \textbf{Descripción} \\ \hline
+\texttt{idClase} & \verb![A-Z][A-Za-z0-9_]+! & Clase o interfaz \\ \hline
+\texttt{idGen} & \texttt{[A-Z]} & Parámetro de tipo genérico (una sola mayúscula) \\ \hline
+\texttt{idMV} & \verb![a-z][A-Za-z0-9_]*! & Método o variable \\ \hline
+\end{tabular}
+\end{center}
+
+\subsection{Literales}
+
+\begin{center}
+{\footnotesize
+\setlength{\tabcolsep}{4pt}
+\begin{tabular}{|l|l|p{5.5cm}|}
+\hline
+\textbf{Token} & \textbf{Expresión regular} & \textbf{Restricciones} \\ \hline
+\texttt{litInt} & \verb![0-9]{1,9}! & Máximo 9 dígitos; más de 9 es error \\ \hline
+\texttt{litChar} & \verb!'[^\\'\n]'! o \verb!'\\[^\n]'! &
+  Un caracter normal, o barra invertida seguida de cualquier caracter \\ \hline
+\texttt{litString} & \verb!"([^"\\\n]|\\[^\n])*"! &
+  Sin saltos de línea; \verb!\"! no cierra el literal \\ \hline
+\end{tabular}
+}
+\end{center}
+
+Los literales \texttt{true}, \texttt{false} y \texttt{null} se representan con las palabras reservadas
+\verb!pr_true!, \verb!pr_false! y \verb!pr_null!.
+
+\subsection{Operadores}
+
+\noindent
+\texttt{op+} \texttt{op-} \texttt{op*} \texttt{op/} \texttt{op\%} \texttt{op<} \texttt{op>}
+\texttt{op!} \texttt{op=} \texttt{op==} \texttt{op>=} \texttt{op<=} \texttt{op!=}
+\texttt{op\&\&} \verb!op||! \texttt{op++} \texttt{op--}
+
+\medskip
+\noindent
+Los operadores se reconocen con el criterio del lexema más largo (por ejemplo, \texttt{>=}
+antes que \texttt{>}). Los caracteres \texttt{\&} y \verb!|! no forman operadores por sí solos:
+un \texttt{\&} o \verb!|! no seguido de otro igual es un error léxico.
+
+\subsection{Puntuación}
+
+\begin{center}
+\begin{tabular}{|l|l|l|l|l|l|}
+\hline
+\texttt{parA} & \texttt{parC} & \texttt{llaveA} & \texttt{llaveC} & \texttt{corcheteA} & \texttt{corcheteC} \\
+\texttt{(} & \texttt{)} & \verb!{! & \verb!}! & \texttt{[} & \texttt{]} \\ \hline
+\texttt{puntoComa} & \texttt{coma} & \texttt{punto} & \texttt{dosPuntos} & & \\
+\texttt{;} & \texttt{,} & \texttt{.} & \texttt{:} & & \\ \hline
+\end{tabular}
+\end{center}
+
+\subsection{Fin de archivo}
+
+Token \texttt{EOF} con lexema \verb!$!.
+
+\section{Elementos ignorados}
+
+\begin{itemize}
+  \item Espacios en blanco: espacio, tabulador y salto de línea (LF, CR o CRLF).
+  \item Comentarios de una línea: desde \texttt{//} hasta el final de la línea.
+  \item Comentarios multilínea: desde \texttt{/*} hasta \texttt{*/}.
+\end{itemize}
+
+\section{Errores lexicos}
+
+Al detectar un error se lanza \texttt{ExcepcionLexica} con el lexema armado hasta el momento y
+el número de línea, y el módulo principal finaliza la ejecución reportando:
+
+\begin{verbatim}
+Error Lexico en linea <N>: <mensaje>
+[Error:<lexema>|<N>]
+\end{verbatim}
+
+Para que el código de error quede en una sola línea, en el caso de un comentario
+multilínea sin cerrar el lexema reportado es el que abre el comentario, \texttt{/*}.
+
+Mensajes según la naturaleza del error:
+
+\begin{center}
+\begin{tabular}{|l|l|}
+\hline
+\textbf{Caso} & \textbf{Mensaje} \\ \hline
+Caracter inválido (no es símbolo válido) & \texttt{<lexema> no es un simbolo valido} \\ \hline
+String sin comilla de cierre & \texttt{literal string mal formado} \\ \hline
+Caracter mal formado & \texttt{literal caracter mal formado} \\ \hline
+Entero con más de 9 dígitos & \texttt{literal entero demasiado largo} \\ \hline
+Comentario multilínea sin cerrar & \texttt{comentario sin cerrar} \\ \hline
+\end{tabular}
+\end{center}
+
+\section{Formato de salida}
+
+\subsection{Análisis exitoso}
+
+Un token por línea con el formato \texttt{(NombreToken,Lexema,NroLinea)}. El lexema incluye los
+delimitadores para strings y caracteres (por ejemplo, \texttt{(litString,"hola",2)} o
+\verb!(litChar,'\n',3)!). Al final se imprime el token de fin de archivo y:
+
+\begin{verbatim}
+[SinErrores]
+\end{verbatim}
+
+\subsection{Análisis con errores}
+
+\begin{verbatim}
+Error Lexico en linea 2: # no es un simbolo valido
+[Error:#|2]
+\end{verbatim}
+
+Toda la salida se realiza con \texttt{System.out}.
+
+\section{Compilacion y ejecucion}
+
+No se usa ninguna herramienta de build: solo se necesitan \texttt{javac}, \texttt{jar} y
+\texttt{java} de cualquier JDK 21 o superior (probado con JDK 25).
+
+{\footnotesize
+\begin{verbatim}
+./Compilar.sh             # compila y genera Compilador.jar  (Windows: Compilar.bat)
+java -jar Compilador.jar resources/sinErrores/lexSinErrores01.java
+./CorrerTests.sh          # compila y ejecuta los testers JUnit  (Windows: CorrerTests.bat)
+\end{verbatim}
+}
+
+\texttt{CorrerTests.sh} descarga automáticamente \texttt{junit-4.13.2.jar} y
+\texttt{hamcrest-core-1.3.jar} en \texttt{lib/} si no están (requiere \texttt{curl});
+si no hay red, se pueden descargar a mano de Maven Central y dejarlos en esa carpeta.
+
+\subsection{Comandos manuales equivalentes}
+
+Compilar (desde \texttt{codigo/}):
+
+{\footnotesize
+\begin{verbatim}
+javac -d build/classes \
+  src/main/java/moduloprincipal/*.java \
+  src/main/java/analizadorlexico/*.java \
+  src/main/java/sourcemanager/*.java
+jar cfe Compilador.jar moduloprincipal.ModuloPrincipal -C build/classes .
+\end{verbatim}
+}
+
+Correr los tests (desde \texttt{codigo/}, con JUnit 4.13.2 y Hamcrest 1.3 en \texttt{lib/}):
+
+{\footnotesize
+\begin{verbatim}
+javac -cp "build/classes:lib/junit-4.13.2.jar:lib/hamcrest-core-1.3.jar" \
+  -d build/test-classes src/test/java/test/*.java
+
+java -cp "build/classes:build/test-classes:lib/junit-4.13.2.jar:\
+lib/hamcrest-core-1.3.jar" org.junit.runner.JUnitCore \
+  test.TesterDeCasosSinErrores test.TesterDeCasosConErrores
+\end{verbatim}
+}
+
+En Windows el separador del classpath es \texttt{;} en lugar de \texttt{:}.
+
+Los testers (\texttt{TesterDeCasosSinErrores} y \texttt{TesterDeCasosConErrores}) usan el working
+directory \texttt{codigo/} para acceder a \texttt{resources/sinErrores/} y
+\texttt{resources/conErrores/} (los scripts ya se posicionan ahí; los comandos manuales
+deben correrse desde \texttt{codigo/}).
+
+\section{Tests provistos por la catedra}
+
+Casos de prueba incluidos (copiados del material de la cátedra):
+
+\begin{itemize}
+  \item \texttt{resources/sinErrores/lexSinErrores01.java} - identificadores, strings, chars y EOF.
+  \item \texttt{resources/sinErrores/lexSinErrores02.java} - ejemplo de la convención de salida.
+  \item \texttt{resources/sinErrores/lexSinErrores03.java} - archivo solo con comentarios.
+  \item \texttt{resources/conErrores/lexConErrores01.java} - caracter inválido \texttt{\#}.
+  \item \texttt{resources/conErrores/lexConErrores02.java} - string sin comilla de cierre.
+\end{itemize}
+
+\section{Logros}
+
+\begin{itemize}
+  \item \textbf{Manejador de Archivos Eficiente}: \texttt{SourceManagerEficiente} lee de a
+        caracteres y conforma con la interfaz \texttt{SourceManager}, sin modificar la
+        interfaz provista.
+\end{itemize}
+
+\end{document}
