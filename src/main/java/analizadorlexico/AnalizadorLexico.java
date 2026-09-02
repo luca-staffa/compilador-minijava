@@ -221,6 +221,7 @@ public class AnalizadorLexico {
             return token("dosPuntos");
         }
         actualizarLexema();
+        actualizarCaracterActual();
         error(lexema.toString() + " no es un símbolo valido");
         return null;
     }

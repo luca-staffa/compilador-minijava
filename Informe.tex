@@ -302,6 +302,7 @@ Casos de prueba incluidos (copiados del material de la cátedra):
   \item \texttt{resources/sinErrores/lexSinErrores03.java} - archivo solo con comentarios.
   \item \texttt{resources/conErrores/lexConErrores01.java} - caracter inválido \texttt{\#}.
   \item \texttt{resources/conErrores/lexConErrores02.java} - string sin comilla de cierre.
+  \item \texttt{resources/conErrores/lexConErrores03.java} - múltiples errores en una corrida.
 \end{itemize}
 
 \section{Logros}
@@ -310,6 +311,11 @@ Casos de prueba incluidos (copiados del material de la cátedra):
   \item \textbf{Manejador de Archivos Eficiente}: \texttt{SourceManagerEficiente} lee de a
         caracteres y conforma con la interfaz \texttt{SourceManager}, sin modificar la
         interfaz provista.
+  \item \textbf{Multi-detección de Errores Léxicos}: el módulo principal no finaliza ante
+        el primer error léxico; captura la excepción, reporta el error y continúa pidiendo
+        tokens hasta el \texttt{EOF}. El léxico consume el carácter ofensor en los estados
+        de error para garantizar el progreso de la recuperación. Sólo si la corrida no
+        registró errores se imprime \texttt{[SinErrores]}.
 \end{itemize}
 
 \end{document}

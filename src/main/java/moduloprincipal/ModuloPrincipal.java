@@ -21,16 +21,24 @@ public class ModuloPrincipal {
             AnalizadorLexico lexico = new AnalizadorLexico(gestorDeFuente);
 
             Token token;
-            do {
-                token = lexico.proximoToken();
-                System.out.println("(" + token.getNombre() + "," + token.getLexema() + ","
-                        + token.getNroLinea() + ")");
-            } while (!"EOF".equals(token.getNombre()));
+            boolean huboErrores = false;
+            boolean fin = false;
+            while (!fin) {
+                try {
+                    token = lexico.proximoToken();
+                    System.out.println("(" + token.getNombre() + "," + token.getLexema() + ","
+                            + token.getNroLinea() + ")");
+                    fin = "EOF".equals(token.getNombre());
+                } catch (ExcepcionLexica e) {
+                    System.out.println("Error Léxico en linea " + e.getNroLinea() + ": " + e.getMessage());
+                    System.out.println("[Error:" + e.getLexema() + "|" + e.getNroLinea() + "]");
+                    huboErrores = true;
+                }
+            }
 
-            System.out.println("[SinErrores]");
-        } catch (ExcepcionLexica e) {
-            System.out.println("Error Léxico en linea " + e.getNroLinea() + ": " + e.getMessage());
-            System.out.println("[Error:" + e.getLexema() + "|" + e.getNroLinea() + "]");
+            if (!huboErrores) {
+                System.out.println("[SinErrores]");
+            }
         } catch (IOException e) {
             System.out.println("No se pudo procesar el archivo: " + args[0]);
         } finally {
