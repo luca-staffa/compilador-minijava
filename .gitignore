@@ -5,9 +5,6 @@ Compilador.jar
 # Dependencias de test (CorrerTests.sh las descarga en lib/)
 lib/
 
-# PDF generado desde DOCUMENTACION.tex
-DOCUMENTACION.pdf
-
 # Auxiliares de LaTeX
 *.aux
 *.log
