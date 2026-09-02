@@ -18,8 +18,10 @@ Especificación en notación clara del autómata implementado en
 - **EOF** actúa como "otro carácter" en los estados finales (cierra el token) y
   como **error** en `eString`, `eStringEscape`, `eCaracter`, `eCaracterEscape`,
   `eCaracterFin` y `eComentarioBloque`.
-- Ante un error léxico, se lanza `ExcepcionLexica` y termina
-  el análisis (esos estados **no** vuelven a `e0`).
+- Ante un error léxico, el estado lanza `ExcepcionLexica` (sin transición interna a
+  `e0`). El módulo principal la captura, reporta el error y vuelve a pedir tokens,
+  retomando en `e0` desde la posición de lectura actual (multi-detección de errores;
+  en `e0` el carácter ofensor se consume para garantizar el progreso).
 - El `SourceManagerEficiente` normaliza `\r\n` y `\r` a `\n` **antes** del autómata,
   por lo que el autómata solo ve `\n`.
 
