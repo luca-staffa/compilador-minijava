@@ -1,5 +1,5 @@
-% Documentación de la Etapa 1 - generado a partir de DOCUMENTACION.md
-% Compilar con:  pdflatex DOCUMENTACION.tex
+% Documentación de la Etapa 1
+% Compilar con:  pdflatex Informe.tex
 \documentclass[11pt,a4paper]{article}
 
 \usepackage[utf8]{inputenc}
@@ -67,7 +67,9 @@ formato \texttt{(NombreToken,Lexema,NroLinea)}. Al finalizar sin errores se impr
 \texttt{[SinErrores]}.
 
 Ante un error léxico, la excepción \texttt{ExcepcionLexica} es capturada por el módulo principal,
-que reporta el mensaje de error y el código de error, finalizando la ejecución.
+que reporta el mensaje de error y el código de error, y continúa solicitando tokens hasta el
+EOF sin finalizar la ejecución (multi-detección de errores, ver sección Logros). Sólo si la
+corrida completa no registró errores se imprime \texttt{[SinErrores]}.
 
 \subsection{Manejador de archivos eficiente (SourceManagerEficiente)}
 
@@ -196,7 +198,8 @@ Token \texttt{EOF} con lexema \verb!$!.
 \section{Errores lexicos}
 
 Al detectar un error se lanza \texttt{ExcepcionLexica} con el lexema armado hasta el momento y
-el número de línea, y el módulo principal finaliza la ejecución reportando:
+el número de línea. El módulo principal la captura, reporta el error y continúa pidiendo
+tokens hasta el EOF, de forma que una corrida reporta todos los errores léxicos del fuente.
 
 \begin{verbatim}
 Error Lexico en linea <N>: <mensaje>
@@ -234,10 +237,17 @@ delimitadores para strings y caracteres (por ejemplo, \texttt{(litString,"hola",
 
 \subsection{Análisis con errores}
 
+Cada error se reporta en el momento en que se detecta, con el formato:
+
 \begin{verbatim}
 Error Lexico en linea 2: # no es un simbolo valido
 [Error:#|2]
 \end{verbatim}
+
+Tras cada error el análisis continúa, por lo que pueden reportarse varios errores en una
+misma corrida (por ejemplo, \texttt{lexConErrores02.java} reporta el string sin cerrar de la
+línea 3 y luego la comilla sin cerrar de la línea 4). Si se detectó al menos un error no se
+imprime \texttt{[SinErrores]}.
 
 Toda la salida se realiza con \texttt{System.out}.
 
