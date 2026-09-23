@@ -86,7 +86,7 @@ error y finaliza la ejecución, como exigen las pautas de esta etapa.
 \subsection{Analizador sintáctico (AnalizadorSintactico)}
 
 Implementa la estrategia recursiva simple sobre la gramática LL(1) de la sección
-\ref{sec:gramatica}:
+5:
 
 \begin{itemize}
   \item \textbf{Un método por cada no terminal} de la gramática. El cuerpo codifica las
@@ -259,7 +259,16 @@ escribe \texttt{eps} por la producción vacía.
 \label{sec:gramatica}
 
 Versión final LL(1) (equivalente a la original: genera el mismo lenguaje). El símbolo
-\texttt{eof} corresponde al token \texttt{EOF} (lexema \verb!$!).
+\texttt{eof} corresponde al token \texttt{EOF} (lexema \verb!$!). Esta versión incorpora
+las extensiones de los logros declarados en la sección \textit{Logros}: \texttt{<Miembro>},
+\texttt{<MiembroSinVisibilidad>}, \texttt{<VisibilidadOpcional>},
+\texttt{<RestoTipoOConstructor>}, \texttt{<TipoFinalOConstructor>},
+\texttt{<MetodoOAtributo>}, \texttt{<MetodoInterfaz>}, \texttt{<ExpresionBasica>} y
+\texttt{<PosfijoOpcional>}. En particular, el constructor con visibilidad implícita se
+deriva por \texttt{idClase <RestoTipoOConstructor>} (no hay una regla
+\texttt{<Constructor>} separada); los constructores con visibilidad explícita
+\texttt{public}/\texttt{private} también entran por esa vía, con la
+\texttt{<VisibilidadOpcional>} consumida como prefijo del miembro.
 
 {\footnotesize
 \begin{verbatim}
@@ -269,8 +278,7 @@ Versión final LL(1) (equivalente a la original: genera el mismo lenguaje). El s
 
 <Clase> ::= class idClase <GenericidadOpcional> <HerenciaOpcional> { <ListaMiembros> }
 
-<Interfaz> ::= interface idClase <GenericidadOpcional> <ExtensionOpcional>
-               { <ListaMetodosInterfaz> }
+<Interfaz> ::= interface idClase <GenericidadOpcional> <ExtensionOpcional> { <ListaMetodosInterfaz> }
 
 <GenericidadOpcional> ::= < idGen > | eps
 
@@ -300,8 +308,6 @@ Versión final LL(1) (equivalente a la original: genera el mismo lenguaje). El s
 <MetodoResto> ::= <Tipo> idMetVar <ArgsFormales> <Bloque>
 
 <MetodoInterfaz> ::= <VisibilidadOpcional> <TipoMetodo> idMetVar <ArgsFormales> ;
-
-<Constructor> ::= public idClase <ArgsFormales> <Bloque>
 
 <TipoMetodo> ::= <Tipo> | void
 
@@ -372,7 +378,7 @@ Versión final LL(1) (equivalente a la original: genera el mismo lenguaje). El s
 
 <Primitivo> ::= true | false | intLiteral | charLiteral | null
 
-<Referencia> ::= <Primario> <RResto> <PosfijoOpcional>
+<Referencia> ::= <Primario> <RResto>
 <RResto> ::= . idMetVar <MetodoOVar> <RResto>
 <RResto> ::= <AccesoArreglo> <RResto>
 <RResto> ::= eps
@@ -534,22 +540,7 @@ con errores llevan en su primera línea el código esperado con el formato
 
 Se incluyen los casos provistos por la cátedra y casos propios desarrollados para esta
 etapa (el diseño de los casos de prueba es responsabilidad del alumno). Resultado actual:
-\textbf{26/26 casos OK} (11 sin errores y 15 con errores).
-
-\subsection{Casos provistos por la cátedra}
-
-\begin{itemize}
-  \item \texttt{sintCorrecto01.java} - clase vacía.
-  \item \texttt{sintCorrecto02.java} - método dinámico sin argumentos y cuerpo vacío.
-  \item \texttt{sintCorrecto03.java} - método estático con parámetro y bloque anidado con
-        sentencia vacía.
-  \item \texttt{sintCorrecto04.java} - asignación con \texttt{this} encadenado, atributo y
-        constructor.
-  \item \texttt{sintError01.java} - herencia doble (\verb!,! tras el extends).
-  \item \texttt{sintError02.java} - id de clase en minúsculas.
-  \item \texttt{sintError03.java} - expresión mal formada (falta operador).
-  \item \texttt{sintError04.java} - \texttt{else} en lugar de sentencia.
-\end{itemize}
+\textbf{29/29 casos OK} (14 sin errores y 15 con errores).
 
 \subsection{Casos propios}
 
@@ -610,9 +601,7 @@ aditivas de la gramática LL(1) base (cada uno con casos de prueba propios en
         dimensiones o \texttt{idMetVar} indican atributo o método tipado).
 \end{itemize}
 
-No se intentan los demás logros de la Etapa 2 (expresiones lambda, variables locales
-clásicas, recuperación en modo pánico, \texttt{for}, genericidad avanzada/anidada,
-inicialización de arreglos, operador ternario). De la etapa anterior se conserva vigente
+De la etapa anterior se conserva vigente
 el logro del \textbf{Manejador de Archivos Eficientes}
 (\texttt{SourceManagerEficiente}), que sigue siendo el módulo de lectura del fuente. La
 multi-detección de errores léxicos de la Etapa 1 no aplica en esta etapa: el módulo
