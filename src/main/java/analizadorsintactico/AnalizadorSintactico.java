@@ -39,6 +39,7 @@ public class AnalizadorSintactico {
         DESCRIPCIONES.put("pr_int", "'int'");
         DESCRIPCIONES.put("pr_void", "'void'");
         DESCRIPCIONES.put("pr_public", "'public'");
+        DESCRIPCIONES.put("pr_private", "'private'");
         DESCRIPCIONES.put("pr_if", "'if'");
         DESCRIPCIONES.put("pr_else", "'else'");
         DESCRIPCIONES.put("pr_while", "'while'");
@@ -89,10 +90,11 @@ public class AnalizadorSintactico {
 
     private static final Set<String> PRIMEROS_MIEMBRO = Set.of(
             "pr_boolean", "pr_char", "pr_int", "idClase", "idGen",
-            "pr_void", "pr_static", "pr_public");
+            "pr_void", "pr_static", "pr_public", "pr_private");
 
-    private static final Set<String> PRIMEROS_TIPO_METODO = Set.of(
-            "pr_boolean", "pr_char", "pr_int", "idClase", "idGen", "pr_void");
+    private static final Set<String> PRIMEROS_METODO_INTERFAZ = Set.of(
+            "pr_boolean", "pr_char", "pr_int", "idClase", "idGen", "pr_void",
+            "pr_public", "pr_private");
 
     private static final Set<String> PRIMEROS_PRIMITIVO = Set.of(
             "pr_true", "pr_false", "litInt", "litChar", "pr_null");
@@ -250,7 +252,7 @@ public class AnalizadorSintactico {
 
     // <ListaMetodosInterfaz> ::= <MetodoInterfaz> <ListaMetodosInterfaz> | epsilon
     private void listaMetodosInterfaz() throws IOException {
-        if (actualEn(PRIMEROS_TIPO_METODO)) {
+        if (actualEn(PRIMEROS_METODO_INTERFAZ)) {
             metodoInterfaz();
             listaMetodosInterfaz();
         } else {
@@ -258,36 +260,90 @@ public class AnalizadorSintactico {
         }
     }
 
-    // <Miembro> ::= <Tipo> idMetVar <MetodoOAtributo>
-    //             | <MetodoVoid>
-    //             | static <MetodoResto>
-    //             | <Constructor>
+    // <Miembro> ::= <VisibilidadOpcional> <MiembroSinVisibilidad>
+    // Logro Visibilidad Mejorada E2: public/private opcionales para todo miembro.
     private void miembro() throws IOException {
-        if (actualEn(PRIMEROS_TIPO)) {
-            tipo();
-            match("idMV");
-            metodoOAtributo();
-        } else if (actualEn(Set.of("pr_void"))) {
+        visibilidadOpcional();
+        miembroSinVisibilidad();
+    }
+
+    // <VisibilidadOpcional> ::= public | private | epsilon
+    private void visibilidadOpcional() throws IOException {
+        if (actualEn(Set.of("pr_public"))) {
+            match("pr_public");
+        } else if (actualEn(Set.of("pr_private"))) {
+            match("pr_private");
+        } else {
+            // epsilon: visibilidad implicita
+        }
+    }
+
+    // <MiembroSinVisibilidad> ::= <MetodoVoid>
+    //                           | static <MetodoResto>
+    //                           | <TipoPrimitivo> <DimensionesOpcionales> idMetVar <MetodoOAtributo>
+    //                           | idGen <DimensionesOpcionales> idMetVar <MetodoOAtributo>
+    //                           | idClase <RestoTipoOConstructor>
+    private void miembroSinVisibilidad() throws IOException {
+        if (actualEn(Set.of("pr_void"))) {
             metodoVoid();
         } else if (actualEn(Set.of("pr_static"))) {
             match("pr_static");
             metodoResto();
-        } else if (actualEn(Set.of("pr_public"))) {
-            constructor();
+        } else if (actualEn(PRIMEROS_TIPO_PRIMITIVO)) {
+            tipoPrimitivo();
+            dimensionesOpcionales();
+            match("idMV");
+            metodoOAtributo();
+        } else if (actualEn(Set.of("idGen"))) {
+            match("idGen");
+            dimensionesOpcionales();
+            match("idMV");
+            metodoOAtributo();
+        } else if (actualEn(Set.of("idClase"))) {
+            match("idClase");
+            restoTipoOConstructor();
         } else {
             throw error("un miembro de la clase (atributo, metodo o constructor)");
         }
     }
 
-    // <MetodoOAtributo> ::= ; | <ArgsFormales> <Bloque>
+    // <RestoTipoOConstructor> ::= <TipoGenericoOpcional> <TipoFinalOConstructor>
+    // Factorizacion profunda: tras idClase puede seguir un tipo (atributo/metodo)
+    // o directamente los argumentos formales (constructor sin visibilidad).
+    private void restoTipoOConstructor() throws IOException {
+        tipoGenericoOpcional();
+        tipoFinalOConstructor();
+    }
+
+    // <TipoFinalOConstructor> ::= <DimensionesOpcionales> idMetVar <MetodoOAtributo>
+    //                           | <ArgsFormales> <Bloque>
+    private void tipoFinalOConstructor() throws IOException {
+        if (actualEn(Set.of("corcheteA", "idMV"))) {
+            dimensionesOpcionales();
+            match("idMV");
+            metodoOAtributo();
+        } else if (actualEn(Set.of("parA"))) {
+            argsFormales();
+            bloque();
+        } else {
+            throw error("un atributo, un metodo o un constructor");
+        }
+    }
+
+    // <MetodoOAtributo> ::= ; | = <ExpresionCompuesta> ; | <ArgsFormales> <Bloque>
+    // Logro Atributos Inicializados: el atributo puede inicializarse al declararse.
     private void metodoOAtributo() throws IOException {
         if (actualEn(Set.of("puntoComa"))) {
+            match("puntoComa");
+        } else if (actualEn(Set.of("op="))) {
+            match("op=");
+            expresionCompuesta();
             match("puntoComa");
         } else if (actualEn(Set.of("parA"))) {
             argsFormales();
             bloque();
         } else {
-            throw error("';' o los argumentos formales de un metodo");
+            throw error("';', una inicializacion o los argumentos formales de un metodo");
         }
     }
 
@@ -313,21 +369,16 @@ public class AnalizadorSintactico {
         }
     }
 
-    // <MetodoInterfaz> ::= <TipoMetodo> idMetVar <ArgsFormales> ;
+    // <MetodoInterfaz> ::= <VisibilidadOpcional> <TipoMetodo> idMetVar <ArgsFormales> ;
     private void metodoInterfaz() throws IOException {
+        visibilidadOpcional();
         tipoMetodo();
         match("idMV");
         argsFormales();
         match("puntoComa");
     }
 
-    // <Constructor> ::= public idClase <ArgsFormales> <Bloque>
-    private void constructor() throws IOException {
-        match("pr_public");
-        match("idClase");
-        argsFormales();
-        bloque();
-    }
+    // <Constructor> (se maneja via <MiembroSinVisibilidad> tras idClase)
 
     // <TipoMetodo> ::= <Tipo> | void
     private void tipoMetodo() throws IOException {
@@ -596,7 +647,10 @@ public class AnalizadorSintactico {
         }
     }
 
-    // <ExpresionBasica> ::= <OperadorUnario> <Operando> | <Operando>
+    // <ExpresionBasica> ::= <OperadorUnario> <Operando> <PosfijoOpcional>
+    //                     | <Operando> <PosfijoOpcional>
+    // Logro Operadores Posfijos E2: el posfijo va solo al final de la
+    // expresion basica completa (referencia incluida), para mantener LL(1).
     private void expresionBasica() throws IOException {
         if (actualEn(PRIMEROS_OPERADOR_UNARIO)) {
             operadorUnario();
@@ -605,6 +659,16 @@ public class AnalizadorSintactico {
             operando();
         } else {
             throw error("una expresion");
+        }
+        posfijoOpcional();
+    }
+
+    // <PosfijoOpcional> ::= ++ | -- | epsilon
+    private void posfijoOpcional() throws IOException {
+        if (actualEn(Set.of("op++", "op--"))) {
+            match(tokenActual.getNombre());
+        } else {
+            // epsilon: no se hace nada
         }
     }
 

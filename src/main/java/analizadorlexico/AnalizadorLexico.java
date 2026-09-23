@@ -19,6 +19,7 @@ public class AnalizadorLexico {
         palabrasClave.put("int", "pr_int");
         palabrasClave.put("void", "pr_void");
         palabrasClave.put("public", "pr_public");
+        palabrasClave.put("private", "pr_private");
         palabrasClave.put("if", "pr_if");
         palabrasClave.put("else", "pr_else");
         palabrasClave.put("while", "pr_while");

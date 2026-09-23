@@ -282,17 +282,24 @@ Versión final LL(1) (equivalente a la original: genera el mismo lenguaje). El s
 
 <ListaMetodosInterfaz> ::= <MetodoInterfaz> <ListaMetodosInterfaz> | eps
 
-<Miembro> ::= <Tipo> idMetVar <MetodoOAtributo>
-<Miembro> ::= <MetodoVoid>
-<Miembro> ::= static <MetodoResto>
-<Miembro> ::= <Constructor>
+<Miembro> ::= <VisibilidadOpcional> <MiembroSinVisibilidad>
+<MiembroSinVisibilidad> ::= <MetodoVoid>
+<MiembroSinVisibilidad> ::= static <MetodoResto>
+<MiembroSinVisibilidad> ::= <TipoPrimitivo> <DimensionesOpcionales> idMetVar <MetodoOAtributo>
+<MiembroSinVisibilidad> ::= idGen <DimensionesOpcionales> idMetVar <MetodoOAtributo>
+<MiembroSinVisibilidad> ::= idClase <RestoTipoOConstructor>
+<VisibilidadOpcional> ::= public | private | eps
+<RestoTipoOConstructor> ::= <TipoGenericoOpcional> <TipoFinalOConstructor>
+<TipoFinalOConstructor> ::= <DimensionesOpcionales> idMetVar <MetodoOAtributo>
+<TipoFinalOConstructor> ::= <ArgsFormales> <Bloque>
 <MetodoOAtributo> ::= ;
+<MetodoOAtributo> ::= = <ExpresionCompuesta> ;
 <MetodoOAtributo> ::= <ArgsFormales> <Bloque>
 <MetodoVoid> ::= void idMetVar <ArgsFormales> <Bloque>
 <MetodoResto> ::= <MetodoVoid>
 <MetodoResto> ::= <Tipo> idMetVar <ArgsFormales> <Bloque>
 
-<MetodoInterfaz> ::= <TipoMetodo> idMetVar <ArgsFormales> ;
+<MetodoInterfaz> ::= <VisibilidadOpcional> <TipoMetodo> idMetVar <ArgsFormales> ;
 
 <Constructor> ::= public idClase <ArgsFormales> <Bloque>
 
@@ -354,8 +361,9 @@ Versión final LL(1) (equivalente a la original: genera el mismo lenguaje). El s
 
 <OperadorBinario> ::= || | && | == | != | < | > | <= | >= | + | - | * | / | %
 
-<ExpresionBasica> ::= <OperadorUnario> <Operando>
-<ExpresionBasica> ::= <Operando>
+<ExpresionBasica> ::= <OperadorUnario> <Operando> <PosfijoOpcional>
+<ExpresionBasica> ::= <Operando> <PosfijoOpcional>
+<PosfijoOpcional> ::= ++ | -- | eps
 
 <OperadorUnario> ::= + | - | !
 
@@ -364,7 +372,7 @@ Versión final LL(1) (equivalente a la original: genera el mismo lenguaje). El s
 
 <Primitivo> ::= true | false | intLiteral | charLiteral | null
 
-<Referencia> ::= <Primario> <RResto>
+<Referencia> ::= <Primario> <RResto> <PosfijoOpcional>
 <RResto> ::= . idMetVar <MetodoOVar> <RResto>
 <RResto> ::= <AccesoArreglo> <RResto>
 <RResto> ::= eps
@@ -578,16 +586,37 @@ etapa (el diseño de los casos de prueba es responsabilidad del alumno). Resulta
 
 \section{Logros}
 
-Para esta etapa se implementa el analizador sintáctico base sobre la gramática LL(1) de
-MiniJava; \textbf{no se intentan logros opcionales de la Etapa 2} (expresiones lambda,
-variables locales clásicas, visibilidad explícita, recuperación en modo pánico,
-\texttt{for}, genericidad avanzada/anidada, atributos inicializados, inicialización de
-arreglos, operador ternario ni operadores posfijos).
+Se implementan los siguientes logros opcionales de la Etapa 2, como extensiones
+aditivas de la gramática LL(1) base (cada uno con casos de prueba propios en
+\texttt{resources/sinErrores/}):
 
-De la etapa anterior se conserva vigente el logro del \textbf{Manejador de Archivos
-Eficiente} (\texttt{SourceManagerEficiente}), que sigue siendo el módulo de lectura del
-fuente. La multi-detección de errores léxicos de la Etapa 1 no aplica en esta etapa: el
-módulo principal ahora finaliza al primer error detectado (sintáctico o léxico), según lo
+\begin{itemize}
+  \item \textbf{Atributos Inicializados}: los atributos pueden inicializarse al
+        declararse (\texttt{int x = 5;}). Se agrega la producción\\
+        \texttt{<MetodoOAtributo> ::= = <ExpresionCompuesta> ;}.
+  \item \textbf{Operadores Posfijos E2}: operadores unarios postfijos de incremento y
+        decremento (\texttt{++} y \texttt{--}) tras un operando. Se agrega
+        \texttt{<PosfijoOpcional> ::= ++ | -- | eps} al final de
+        \texttt{<ExpresionBasica>}. Los tokens \texttt{op++}/\texttt{op--} ya eran
+        reconocidos por el léxico de la Etapa 1.
+  \item \textbf{Visibilidad Mejorada E2}: los miembros pueden declararse con
+        visibilidad explícita \texttt{public}/\texttt{private} u omitirla (implícita),
+        para atributos, métodos, constructores y métodos de interfaz. La palabra
+        reservada \texttt{private} se agrega al léxico. Al re-factorizarse
+        \texttt{<Miembro>} para el prefijo opcional de visibilidad, el constructor sin
+        visibilidad explícita se mantiene soportado mediante la factorización
+        \texttt{idClase <RestoTipoOConstructor>} (tras \texttt{idClase}, los paréntesis
+        de los argumentos formales indican constructor; un tipo genérico opcional,
+        dimensiones o \texttt{idMetVar} indican atributo o método tipado).
+\end{itemize}
+
+No se intentan los demás logros de la Etapa 2 (expresiones lambda, variables locales
+clásicas, recuperación en modo pánico, \texttt{for}, genericidad avanzada/anidada,
+inicialización de arreglos, operador ternario). De la etapa anterior se conserva vigente
+el logro del \textbf{Manejador de Archivos Eficientes}
+(\texttt{SourceManagerEficiente}), que sigue siendo el módulo de lectura del fuente. La
+multi-detección de errores léxicos de la Etapa 1 no aplica en esta etapa: el módulo
+principal ahora finaliza al primer error detectado (sintáctico o léxico), según lo
 exigen las pautas de la Etapa 2.
 
 \end{document}
