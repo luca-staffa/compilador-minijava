@@ -1,0 +1,593 @@
+% Documentación de la Etapa 2
+% Compilar con:  pdflatex Informe_etapa2.tex
+\documentclass[11pt,a4paper]{article}
+
+\usepackage[utf8]{inputenc}
+\usepackage[margin=2.5cm]{geometry}
+\usepackage{url}
+
+\title{Etapa 2 - Analizador Sintáctico de MiniJava}
+\author{Compiladores e Intérpretes --- UNS, 2026}
+\date{}
+
+% Esta instalacion TeX no tiene las fuentes TS1 (text companion): se evitan los
+% simbolos que las requieren (vinetas de itemize, llaves via \{ en \texttt).
+\renewcommand{\labelitemi}{$\bullet$}
+
+\begin{document}
+
+\sloppy
+
+\maketitle
+
+\noindent
+Implementación de un analizador sintáctico descendente recursivo para MiniJava, cliente del
+analizador léxico desarrollado en la Etapa 1. La gramática original de MiniJava no es LL(1),
+por lo que primero se la transformó (eliminación de recursión a izquierda y factorización
+simple y profunda) obteniendo una gramática equivalente LL(1), sobre la que se aplicó la
+estrategia recursiva simple: un método por cada no terminal, selección de la producción
+según los primeros de sus partes derechas y consumo de terminales mediante \texttt{match}.
+
+\section{Esquema general}
+
+El módulo principal recibe el archivo fuente y se lo asocia al manejador de archivos y este
+al léxico (como en la Etapa 1). Luego crea al sintáctico con la dependencia al léxico y le
+pide que comience el análisis. Si el análisis finaliza sin errores, informa el mensaje de
+éxito; si se produce un error sintáctico o léxico, el sintáctico termina propagando una
+excepción que el módulo principal captura y reporta. A diferencia de la Etapa 1, el
+principal no imprime la secuencia de tokens: su interfaz se limita a disparar el análisis y
+reportar el resultado.
+
+\section{Estructura del proyecto}
+
+{\footnotesize
+\begin{verbatim}
+codigo/
+|-- Compilar.sh / Compilar.bat          Compila y genera Compilador.jar
+|-- CorrerTests.sh / CorrerTests.bat    Compila y ejecuta los testers JUnit
+|-- lib/                                Jars de JUnit 4 y Hamcrest (se autodescargan)
+|-- src/main/java/
+|   |-- moduloprincipal/
+|   |   \-- ModuloPrincipal.java        Modulo principal (interfaz con el usuario)
+|   |-- analizadorlexico/
+|   |   |-- AnalizadorLexico.java       Automata finito determinista (Etapa 1, sin cambios)
+|   |   |-- Token.java                  Representacion de un token (nombre, lexema, linea)
+|   |   \-- ExcepcionLexica.java        Excepcion propagada ante un error lexico
+|   |-- analizadorsintactico/
+|   |   |-- AnalizadorSintactico.java   Parser descendente recursivo (un metodo por NT)
+|   |   \-- ExcepcionSintactica.java    Excepcion propagada ante un error sintactico
+|   \-- sourcemanager/
+|       |-- SourceManager.java          Interfaz provista por la catedra
+|       |-- SourceManagerImpl.java      Implementacion provista (por lineas, referencia)
+|       \-- SourceManagerEficiente.java Implementacion propia por caracteres (se usa)
+|-- src/test/java/test/                 Testers JUnit provistos por la catedra
+\-- resources/
+    |-- sinErrores/                     Casos de prueba sin errores
+    \-- conErrores/                     Casos de prueba con errores
+\end{verbatim}
+}
+
+\section{Componentes}
+
+\subsection{Módulo principal (ModuloPrincipal)}
+
+Recibe por parámetro la ruta del archivo fuente MiniJava (acepta cualquier extensión):
+
+\begin{verbatim}
+java -jar Compilador.jar programa1.java
+\end{verbatim}
+
+Asocia el archivo a un \texttt{SourceManagerEficiente}, crea el \texttt{AnalizadorLexico},
+crea el \texttt{AnalizadorSintactico} con esa dependencia y le solicita el análisis. Al
+finalizar sin errores imprime el mensaje de éxito y \texttt{[SinErrores]}. Ante un error
+sintáctico o léxico captura la excepción correspondiente, reporta el mensaje y el código de
+error y finaliza la ejecución, como exigen las pautas de esta etapa.
+
+\subsection{Analizador sintáctico (AnalizadorSintactico)}
+
+Implementa la estrategia recursiva simple sobre la gramática LL(1) de la sección
+\ref{sec:gramatica}:
+
+\begin{itemize}
+  \item \textbf{Un método por cada no terminal} de la gramática. El cuerpo codifica las
+        partes derechas de sus producciones: por cada terminal llama a \texttt{match}, y
+        por cada no terminal llama a su método.
+  \item \textbf{Selección por primeros}: cuando un NT tiene varias producciones, se elige
+        la primera cuya parte derecha tiene al token actual en su conjunto de primeros
+        (conjuntos precalculados como constantes, p.\,ej.\ los primeros de un tipo o de una
+        expresión). Si el NT tiene una producción $\epsilon$, el esquema simple no hace
+        nada en la rama \texttt{else}.
+  \item \textbf{match}: compara el token actual con el terminal esperado; si coinciden pide
+        el próximo token al léxico, y si no lanza \texttt{ExcepcionSintactica} con el
+        lexema y la línea del token actual.
+  \item \textbf{Arranque}: el método \texttt{analizar()} carga el primer token del léxico y
+        llama al método del símbolo inicial \texttt{<Inicial>}.
+  \item Un mapa de descripciones de tokens permite generar mensajes del estilo de las
+        pautas (\texttt{se esperaba un id de clase se encontro ...}).
+\end{itemize}
+
+El sintáctico consume tokens bajo demanda: como el símbolo inicial exige llegar al
+\texttt{EOF}, todo token del fuente es requerido y, por lo tanto, un error léxico lanzado
+por el léxico se propaga a través del sintáctico hasta el módulo principal, que lo reporta
+con el mismo formato que un error sintáctico.
+
+\subsection{ExcepcionSintactica}
+
+Excepción (no verificada, al igual que \texttt{ExcepcionLexica}) con el lexema del token
+ofensor, su número de línea y un mensaje descriptivo de la naturaleza del error.
+
+\section{Transformación de la gramática a LL(1)}
+\label{sec:transformacion}
+
+La gramática de MiniJava no es LL(1) por dos tipos de problemas: producciones con
+\textbf{recursión a izquierda} y producciones de un mismo NT cuyas partes derechas
+\textbf{comparten primeros} (no factorizadas). Se resolvieron en ese orden: primero la
+eliminación de recursión a izquierda y luego la factorización simple y profunda. Las
+técnicas aplicadas fueron las vistas en los temas 3.2.3 y 3.2.4. En lo que sigue se
+escribe \texttt{eps} por la producción vacía.
+
+\subsection{Eliminación de recursión a izquierda}
+
+\begin{itemize}
+  \item \textbf{Expresiones compuestas} (recursión por operador binario a la izquierda):
+{\footnotesize
+\begin{verbatim}
+<ExpresionCompuesta> ::= <ExpresionCompuesta> <OperadorBinario> <ExpresionBasica>
+                      | <ExpresionBasica>
+\end{verbatim}}
+        se transforma en:
+{\footnotesize
+\begin{verbatim}
+<ExpresionCompuesta> ::= <ExpresionBasica> <ECResto>
+<ECResto> ::= <OperadorBinario> <ExpresionBasica> <ECResto> | eps
+\end{verbatim}}
+  \item \textbf{Referencias encadenadas} (recursión a izquierda por \texttt{VarEncadenada},
+        \texttt{MetodoEncadenado} y \texttt{AccesoArreglo}):
+{\footnotesize
+\begin{verbatim}
+<Referencia> ::= <Referencia> <VarEncadenada>
+               | <Referencia> <MetodoEncadenado>
+               | <Referencia> <AccesoArreglo>
+               | <Primario>
+\end{verbatim}}
+        se transforma en:
+{\footnotesize
+\begin{verbatim}
+<Referencia> ::= <Primario> <RResto>
+<RResto> ::= . idMetVar <MetodoOVar> <RResto> | <AccesoArreglo> <RResto> | eps
+\end{verbatim}}
+  \item \textbf{Lista de argumentos formales}:
+{\footnotesize
+\begin{verbatim}
+<ListaArgsFormales> ::= <ListaArgsFormales> , <ArgFormal> | <ArgFormal>
+\end{verbatim}}
+        se transforma en:
+{\footnotesize
+\begin{verbatim}
+<ListaArgsFormales> ::= <ArgFormal> <LAFResto>
+<LAFResto> ::= , <ArgFormal> <LAFResto> | eps
+\end{verbatim}}
+\end{itemize}
+
+\subsection{Factorización simple y profunda}
+
+\begin{itemize}
+  \item \textbf{Miembros de una clase} (\texttt{<Atributo>}, \texttt{<Metodo>} y
+        \texttt{<Constructor>} comparten el prefijo \texttt{<Tipo>}; además
+        \texttt{<Metodo>} tenía un \texttt{<ModificadorOpcional>} que podía ser
+        \texttt{static}). Factorización profunda:
+{\footnotesize
+\begin{verbatim}
+<Miembro> ::= <Tipo> idMetVar <MetodoOAtributo> | <MetodoVoid>
+            | static <MetodoResto> | <Constructor>
+<MetodoOAtributo> ::= ; | <ArgsFormales> <Bloque>
+<MetodoVoid> ::= void idMetVar <ArgsFormales> <Bloque>
+<MetodoResto> ::= <MetodoVoid> | <Tipo> idMetVar <ArgsFormales> <Bloque>
+\end{verbatim}}
+  \item \textbf{Sentencias de expresión}: \texttt{<Asignacion>} y \texttt{<Llamada>} derivan
+        ambas en \texttt{<Expresion>}, por lo que se unifican en
+        \texttt{<Sentencia> ::= <Expresion> ;}.
+  \item \textbf{If con else opcional} (dos producciones con prefijo común):
+{\footnotesize
+\begin{verbatim}
+<If> ::= if ( <Expresion> ) <Sentencia>
+       | if ( <Expresion> ) <Sentencia> else <Sentencia>
+\end{verbatim}}
+        se transforma en:
+{\footnotesize
+\begin{verbatim}
+<If> ::= if ( <Expresion> ) <Sentencia> <ElseOpcional>
+<ElseOpcional> ::= else <Sentencia> | eps
+\end{verbatim}}
+  \item \textbf{Expresión con asignación opcional}:
+{\footnotesize
+\begin{verbatim}
+<Expresion> ::= <ExpresionCompuesta> <OperadorAsignacion> <ExpresionCompuesta>
+              | <ExpresionCompuesta>
+\end{verbatim}}
+        se transforma en:
+{\footnotesize
+\begin{verbatim}
+<Expresion> ::= <ExpresionCompuesta> <ExpresionResto>
+<ExpresionResto> ::= <OperadorAsignacion> <ExpresionCompuesta> | eps
+\end{verbatim}}
+  \item \textbf{Primarios}: \texttt{<AccesoVar>} y \texttt{<LlamadaMetodo>} comparten el
+        prefijo \texttt{idMetVar}; \texttt{<CrearArreglo>} y \texttt{<LlamadaConstructor>}
+        comparten \texttt{new} y la estructura de \texttt{<TipoBase>} (que a su vez incluye
+        \texttt{<TipoReferencia>}):
+{\footnotesize
+\begin{verbatim}
+<Primario> ::= idMetVar <MetodoOVar> | new <ArregloOConstructor> | ...
+<MetodoOVar> ::= <ArgsActuales> | eps
+<ArregloOConstructor> ::= <TipoReferencia> <AOC2>
+                        | <TipoPrimitivo> <DimensionesConTamanio>
+                        | idGen <DimensionesConTamanio>
+<AOC2> ::= <ArgsActuales> | <DimensionesConTamanio>
+\end{verbatim}}
+        De la misma forma, en \texttt{<RResto>} los encadenados \texttt{. idMetVar} y
+        \texttt{. idMetVar <ArgsActuales>} se factorizan en
+        \texttt{. idMetVar <MetodoOVar>}.
+  \item \textbf{Dimensiones con tamaño} y \textbf{lista de expresiones} (prefijo común):
+{\footnotesize
+\begin{verbatim}
+<DimensionesConTamanio> ::= [ <Expresion> ] <DCTResto>
+<DCTResto> ::= [ <Expresion> ] <DCTResto> | eps
+<ListaExps> ::= <Expresion> <ListaExpsResto>
+<ListaExpsResto> ::= , <ListaExps> | eps
+\end{verbatim}}
+\end{itemize}
+
+\subsection{Observaciones sobre la LL(1)-cidad}
+
+\begin{itemize}
+  \item \textbf{Else colgante}: es la única construcción residual que, en forma estricta,
+        no es LL(1) (Primeros(\texttt{else S}) $\cap$ Siguientes(\texttt{<ElseOpcional>})
+        contiene \texttt{else}). El esquema recursivo la resuelve de manera determinista
+        consumiendo el \texttt{else} apenas aparece: el \texttt{else} se asocia al
+        \texttt{if} más cercano, como en Java.
+  \item \textbf{Doble uso de los tokens} \verb!op<! y \verb!op>! (genéricos vs.\ operadores
+        relacionales): no genera conflictos porque los genéricos sólo aparecen en contextos
+        de tipo (tras \texttt{idClase}) y los siguientes de las reglas de genericidad nunca
+        incluyen \verb!op<! ni \verb!op>!. El contexto del parser determina la lectura.
+  \item \textbf{Unarios vs.\ binarios} (\texttt{+} y \texttt{-}): los binarios los consume
+        \texttt{<ECResto>} después de una \texttt{<ExpresionBasica>} completa, y dentro de
+        \texttt{<ExpresionBasica>} los primeros de \texttt{<OperadorUnario>} y de
+        \texttt{<Operando>} son disjuntos.
+\end{itemize}
+
+\section{Gramática final utilizada}
+\label{sec:gramatica}
+
+Versión final LL(1) (equivalente a la original: genera el mismo lenguaje). El símbolo
+\texttt{eof} corresponde al token \texttt{EOF} (lexema \verb!$!).
+
+{\footnotesize
+\begin{verbatim}
+<Inicial> ::= <ListaClases> eof
+
+<ListaClases> ::= <Clase> <ListaClases> | <Interfaz> <ListaClases> | eps
+
+<Clase> ::= class idClase <GenericidadOpcional> <HerenciaOpcional> { <ListaMiembros> }
+
+<Interfaz> ::= interface idClase <GenericidadOpcional> <ExtensionOpcional>
+               { <ListaMetodosInterfaz> }
+
+<GenericidadOpcional> ::= < idGen > | eps
+
+<HerenciaOpcional> ::= extends <TipoReferencia> | implements <TipoReferencia> | eps
+
+<ExtensionOpcional> ::= extends <TipoReferencia> | eps
+
+<ListaMiembros> ::= <Miembro> <ListaMiembros> | eps
+
+<ListaMetodosInterfaz> ::= <MetodoInterfaz> <ListaMetodosInterfaz> | eps
+
+<Miembro> ::= <Tipo> idMetVar <MetodoOAtributo>
+<Miembro> ::= <MetodoVoid>
+<Miembro> ::= static <MetodoResto>
+<Miembro> ::= <Constructor>
+<MetodoOAtributo> ::= ;
+<MetodoOAtributo> ::= <ArgsFormales> <Bloque>
+<MetodoVoid> ::= void idMetVar <ArgsFormales> <Bloque>
+<MetodoResto> ::= <MetodoVoid>
+<MetodoResto> ::= <Tipo> idMetVar <ArgsFormales> <Bloque>
+
+<MetodoInterfaz> ::= <TipoMetodo> idMetVar <ArgsFormales> ;
+
+<Constructor> ::= public idClase <ArgsFormales> <Bloque>
+
+<TipoMetodo> ::= <Tipo> | void
+
+<Tipo> ::= <TipoBase> <DimensionesOpcionales>
+
+<TipoBase> ::= <TipoPrimitivo> | <TipoReferencia> | idGen
+
+<DimensionesOpcionales> ::= [] <DimensionesOpcionales> | eps
+
+<TipoReferencia> ::= idClase <TipoGenericoOpcional>
+
+<TipoPrimitivo> ::= boolean | char | int
+
+<TipoGenericoOpcional> ::= < <InstanciadoOParametrico> > | eps
+
+<InstanciadoOParametrico> ::= idGen | idClase
+
+<ArgsFormales> ::= ( <ListaArgsFormalesOpcional> )
+
+<ListaArgsFormalesOpcional> ::= <ListaArgsFormales> | eps
+
+<ListaArgsFormales> ::= <ArgFormal> <LAFResto>
+<LAFResto> ::= , <ArgFormal> <LAFResto> | eps
+
+<ArgFormal> ::= <Tipo> idMetVar
+
+<Bloque> ::= { <ListaSentencias> }
+
+<ListaSentencias> ::= <Sentencia> <ListaSentencias> | eps
+
+<Sentencia> ::= ;
+<Sentencia> ::= <Expresion> ;
+<Sentencia> ::= <VarLocal> ;
+<Sentencia> ::= <Return> ;
+<Sentencia> ::= <If>
+<Sentencia> ::= <While>
+<Sentencia> ::= <Bloque>
+
+<VarLocal> ::= var idMetVar = <ExpresionCompuesta>
+
+<Return> ::= return <ExpresionOpcional>
+
+<ExpresionOpcional> ::= <Expresion> | eps
+
+<If> ::= if ( <Expresion> ) <Sentencia> <ElseOpcional>
+<ElseOpcional> ::= else <Sentencia> | eps
+
+<While> ::= while ( <Expresion> ) <Sentencia>
+
+<Expresion> ::= <ExpresionCompuesta> <ExpresionResto>
+<ExpresionResto> ::= <OperadorAsignacion> <ExpresionCompuesta> | eps
+
+<OperadorAsignacion> ::= =
+
+<ExpresionCompuesta> ::= <ExpresionBasica> <ECResto>
+<ECResto> ::= <OperadorBinario> <ExpresionBasica> <ECResto> | eps
+
+<OperadorBinario> ::= || | && | == | != | < | > | <= | >= | + | - | * | / | %
+
+<ExpresionBasica> ::= <OperadorUnario> <Operando>
+<ExpresionBasica> ::= <Operando>
+
+<OperadorUnario> ::= + | - | !
+
+<Operando> ::= <Primitivo>
+<Operando> ::= <Referencia>
+
+<Primitivo> ::= true | false | intLiteral | charLiteral | null
+
+<Referencia> ::= <Primario> <RResto>
+<RResto> ::= . idMetVar <MetodoOVar> <RResto>
+<RResto> ::= <AccesoArreglo> <RResto>
+<RResto> ::= eps
+
+<Primario> ::= this
+<Primario> ::= stringLiteral
+<Primario> ::= idMetVar <MetodoOVar>
+<Primario> ::= new <ArregloOConstructor>
+<Primario> ::= <LlamadaMetodoEstatico>
+<Primario> ::= <ExpresionParentizada>
+<ArregloOConstructor> ::= <TipoReferencia> <AOC2>
+<ArregloOConstructor> ::= <TipoPrimitivo> <DimensionesConTamanio>
+<ArregloOConstructor> ::= idGen <DimensionesConTamanio>
+<AOC2> ::= <ArgsActuales> | <DimensionesConTamanio>
+<MetodoOVar> ::= <ArgsActuales> | eps
+
+<ExpresionParentizada> ::= ( <Expresion> )
+
+<LlamadaMetodoEstatico> ::= idClase . idMetVar <ArgsActuales>
+
+<DimensionesConTamanio> ::= [ <Expresion> ] <DCTResto>
+<DCTResto> ::= [ <Expresion> ] <DCTResto> | eps
+
+<ArgsActuales> ::= ( <ListaExpsOpcional> )
+
+<ListaExpsOpcional> ::= <ListaExps> | eps
+
+<ListaExps> ::= <Expresion> <ListaExpsResto>
+<ListaExpsResto> ::= , <ListaExps> | eps
+
+<AccesoArreglo> ::= [ <Expresion> ]
+\end{verbatim}
+}
+
+\section{Errores sintácticos}
+
+Al detectarse un error se lanza \texttt{ExcepcionSintactica} con el lexema y la línea del
+token actual, el módulo principal la captura, reporta el error y finaliza la ejecución (no
+hay recuperación: modo pánico fuera del alcance de esta entrega). Los errores léxicos se
+reportan con el mismo formato, ya que la excepción \texttt{ExcepcionLexica} se propaga a
+través del sintáctico. En el código de error el lexema del token \texttt{EOF} es
+\verb!$!.
+
+\begin{verbatim}
+Error Sintactico en linea <N>: <mensaje>
+[Error:<lexema>|<N>]
+\end{verbatim}
+
+El analizador detecta dos tipos de errores sintácticos:
+
+\begin{itemize}
+  \item \textbf{Falla de match}: el token actual no coincide con el terminal que exige la
+        producción en curso. Mensaje \texttt{se esperaba <esperado> se encontro "<encontrado>"}.
+        Por ejemplo, en \verb!class {!:
+{\footnotesize
+\begin{verbatim}
+Error Sintactico en linea 1: se esperaba un id de clase se encontro "{"
+[Error:{|1]
+\end{verbatim}}
+  \item \textbf{Token fuera de los primeros}: el token actual no pertenece a los primeros
+        de ninguna producción de un NT sin producción vacía. Mensaje
+        \texttt{se encontro "<encontrado>" cuando se esperaba <alternativas>}. Por ejemplo,
+        un atributo sin \verb!;!:
+{\footnotesize
+\begin{verbatim}
+Error Sintactico en linea 4: se encontro "}" cuando se esperaba ';' o los
+argumentos formales de un metodo
+[Error:}|4]
+\end{verbatim}}
+\end{itemize}
+
+Ejemplos adicionales de reportes:
+
+\begin{center}
+{\footnotesize
+\setlength{\tabcolsep}{4pt}
+\begin{tabular}{|l|l|}
+\hline
+\textbf{Fuente (fragmento)} & \textbf{Reporte} \\ \hline
+\verb!a = b+4 hola;! & \texttt{[Error:hola|5]} (se esperaba \verb!;! tras la expresión) \\ \hline
+falta \verb!}! al final del archivo & \verb![Error:$|4]! (EOF inesperado) \\ \hline
+\verb!var x;! & \texttt{[Error:;|4]} (se esperaba \verb!=! tras la variable) \\ \hline
+\verb!new int[];! & \texttt{[Error:]|4]} (dimensión sin expresión de tamaño) \\ \hline
+caracter \verb!#! dentro de un miembro & \verb![Error:#|3]! (error léxico propagado) \\ \hline
+\end{tabular}
+}
+\end{center}
+
+\section{Formato de salida}
+
+\subsection{Análisis exitoso}
+
+\begin{verbatim}
+Compilacion Exitosa
+[SinErrores]
+\end{verbatim}
+
+\subsection{Análisis con errores}
+
+Mensaje descriptivo de la naturaleza del error indicando el lexema del token con el que se
+produjo y su número de línea, seguido del código de error (ejemplos en la sección
+anterior). Toda la salida se realiza con \texttt{System.out}.
+
+\section{Compilación y ejecución}
+
+No se usa ninguna herramienta de build: solo se necesitan \texttt{javac}, \texttt{jar} y
+\texttt{java} de cualquier JDK 21 o superior (probado con JDK 25).
+
+{\footnotesize
+\begin{verbatim}
+./Compilar.sh             # compila y genera Compilador.jar  (Windows: Compilar.bat)
+java -jar Compilador.jar resources/sinErrores/sintCorrecto01.java
+./CorrerTests.sh          # compila y ejecuta los testers JUnit  (Windows: CorrerTests.bat)
+\end{verbatim}
+}
+
+\texttt{CorrerTests.sh} descarga automáticamente \texttt{junit-4.13.2.jar} y
+\texttt{hamcrest-core-1.3.jar} en \texttt{lib/} si no están (requiere \texttt{curl});
+si no hay red, se pueden descargar a mano de Maven Central y dejarlos en esa carpeta.
+
+\subsection{Comandos manuales equivalentes}
+
+Compilar (desde \texttt{codigo/}):
+
+{\footnotesize
+\begin{verbatim}
+javac -d build/classes \
+  src/main/java/moduloprincipal/*.java \
+  src/main/java/analizadorlexico/*.java \
+  src/main/java/analizadorsintactico/*.java \
+  src/main/java/sourcemanager/*.java
+jar cfe Compilador.jar moduloprincipal.ModuloPrincipal -C build/classes .
+\end{verbatim}
+}
+
+Correr los tests (desde \texttt{codigo/}, con JUnit 4.13.2 y Hamcrest 1.3 en \texttt{lib/}):
+
+{\footnotesize
+\begin{verbatim}
+javac -cp "build/classes:lib/junit-4.13.2.jar:lib/hamcrest-core-1.3.jar" \
+  -d build/test-classes src/test/java/test/*.java
+
+java -cp "build/classes:build/test-classes:lib/junit-4.13.2.jar:\
+lib/hamcrest-core-1.3.jar" org.junit.runner.JUnitCore \
+  test.TesterDeCasosSinErrores test.TesterDeCasosConErrores
+\end{verbatim}
+}
+
+En Windows el separador del classpath es \texttt{;} en lugar de \texttt{:}.
+
+Los testers usan el working directory \texttt{codigo/} para acceder a
+\texttt{resources/sinErrores/} y \texttt{resources/conErrores/} (los scripts ya se
+posicionan ahí; los comandos manuales deben correrse desde \texttt{codigo/}). Los casos
+sin errores deben ser aceptados (la salida debe contener \texttt{[SinErrores]}); los casos
+con errores llevan en su primera línea el código esperado con el formato
+\verb!///[Error:lexema|nroLinea]! y el tester verifica que aparezca en la salida.
+
+\section{Tests}
+
+Se incluyen los casos provistos por la cátedra y casos propios desarrollados para esta
+etapa (el diseño de los casos de prueba es responsabilidad del alumno). Resultado actual:
+\textbf{26/26 casos OK} (11 sin errores y 15 con errores).
+
+\subsection{Casos provistos por la cátedra}
+
+\begin{itemize}
+  \item \texttt{sintCorrecto01.java} - clase vacía.
+  \item \texttt{sintCorrecto02.java} - método dinámico sin argumentos y cuerpo vacío.
+  \item \texttt{sintCorrecto03.java} - método estático con parámetro y bloque anidado con
+        sentencia vacía.
+  \item \texttt{sintCorrecto04.java} - asignación con \texttt{this} encadenado, atributo y
+        constructor.
+  \item \texttt{sintError01.java} - herencia doble (\verb!,! tras el extends).
+  \item \texttt{sintError02.java} - id de clase en minúsculas.
+  \item \texttt{sintError03.java} - expresión mal formada (falta operador).
+  \item \texttt{sintError04.java} - \texttt{else} en lugar de sentencia.
+\end{itemize}
+
+\subsection{Casos propios}
+
+\begin{itemize}
+  \item \texttt{sintCorrecto05.java} - interfaz con genericidad y extensión, varios
+        métodos.
+  \item \texttt{sintCorrecto06.java} - clase genérica con herencia genérica, atributos de
+        todos los tipos (primitivo, arreglo, clase genérica, parámetro de tipo) y
+        constructor.
+  \item \texttt{sintCorrecto07.java} - if/else anidados, while, var, return con y sin
+        expresión, bloques anidados y sentencia vacía.
+  \item \texttt{sintCorrecto08.java} - expresiones unarias, binarias y parentizadas con
+        todos los operadores y literales.
+  \item \texttt{sintCorrecto09.java} - referencias encadenadas, creación de arreglos con
+        \texttt{new}, accesos con índice y \texttt{this}.
+  \item \texttt{sintCorrecto10.java} - constructores, \texttt{new} de clases con y sin
+        genericidad, \texttt{new} de parámetro de tipo y llamadas a métodos estáticos.
+  \item \texttt{sintCorrecto11.java} - \texttt{implements}, tipos arreglo en parámetros y
+        retorno, varios argumentos formales y actuales.
+  \item \texttt{sintError05.java} - falta el id de clase (\verb!class {!).
+  \item \texttt{sintError06.java} - EOF inesperado (falta la llave de cierre), reporta
+        lexema \verb!$!.
+  \item \texttt{sintError07.java} - falta \verb!;! en un atributo.
+  \item \texttt{sintError08.java} - operador binario sin operando derecho.
+  \item \texttt{sintError09.java} - método de interfaz con cuerpo (se esperaba \verb!;!).
+  \item \texttt{sintError10.java} - \verb!new int[]! sin tamaño de dimensión.
+  \item \texttt{sintError11.java} - paréntesis del \texttt{if} sin cerrar.
+  \item \texttt{sintError12.java} - \texttt{var} sin inicializador.
+  \item \texttt{sintError13.java} - \texttt{extends} sin tipo.
+  \item \texttt{sintError14.java} - acceso encadenado sin identificador (\verb!a. = 3;!).
+  \item \texttt{sintError15.java} - error léxico detectado durante el análisis
+        sintáctico (propagación de \texttt{ExcepcionLexica}).
+\end{itemize}
+
+\section{Logros}
+
+Para esta etapa se implementa el analizador sintáctico base sobre la gramática LL(1) de
+MiniJava; \textbf{no se intentan logros opcionales de la Etapa 2} (expresiones lambda,
+variables locales clásicas, visibilidad explícita, recuperación en modo pánico,
+\texttt{for}, genericidad avanzada/anidada, atributos inicializados, inicialización de
+arreglos, operador ternario ni operadores posfijos).
+
+De la etapa anterior se conserva vigente el logro del \textbf{Manejador de Archivos
+Eficiente} (\texttt{SourceManagerEficiente}), que sigue siendo el módulo de lectura del
+fuente. La multi-detección de errores léxicos de la Etapa 1 no aplica en esta etapa: el
+módulo principal ahora finaliza al primer error detectado (sintáctico o léxico), según lo
+exigen las pautas de la Etapa 2.
+
+\end{document}

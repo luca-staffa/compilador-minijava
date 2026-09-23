@@ -6,7 +6,7 @@ cd /d "%~dp0"
 if exist build rmdir /s /q build
 mkdir build\classes
 
-javac -d build\classes src\main\java\moduloprincipal\*.java src\main\java\analizadorlexico\*.java src\main\java\sourcemanager\*.java || goto :error
+javac -d build\classes src\main\java\moduloprincipal\*.java src\main\java\analizadorlexico\*.java src\main\java\analizadorsintactico\*.java src\main\java\sourcemanager\*.java || goto :error
 
 jar cfe Compilador.jar moduloprincipal.ModuloPrincipal -C build\classes .
 

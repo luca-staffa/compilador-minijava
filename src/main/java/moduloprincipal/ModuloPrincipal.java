@@ -1,9 +1,11 @@
 package moduloprincipal;
 
 import java.io.IOException;
+
 import analizadorlexico.AnalizadorLexico;
 import analizadorlexico.ExcepcionLexica;
-import analizadorlexico.Token;
+import analizadorsintactico.AnalizadorSintactico;
+import analizadorsintactico.ExcepcionSintactica;
 import sourcemanager.SourceManager;
 import sourcemanager.SourceManagerEficiente;
 
@@ -18,33 +20,26 @@ public class ModuloPrincipal {
 
         try {
             gestorDeFuente.open(args[0]);
-            AnalizadorLexico lexico = new AnalizadorLexico(gestorDeFuente);
+            AnalizadorLexico analizadorLexico = new AnalizadorLexico(gestorDeFuente);
+            AnalizadorSintactico analizadorSintactico = new AnalizadorSintactico(analizadorLexico);
 
-            Token token;
-            boolean huboErrores = false;
-            boolean fin = false;
-            while (!fin) {
-                try {
-                    token = lexico.proximoToken();
-                    System.out.println("(" + token.getNombre() + "," + token.getLexema() + ","
-                            + token.getNroLinea() + ")");
-                    fin = "EOF".equals(token.getNombre());
-                } catch (ExcepcionLexica e) {
-                    System.out.println("Error Léxico en linea " + e.getNroLinea() + ": " + e.getMessage());
-                    System.out.println("[Error:" + e.getLexema() + "|" + e.getNroLinea() + "]");
-                    huboErrores = true;
-                }
-            }
+            analizadorSintactico.analizar();
 
-            if (!huboErrores) {
-                System.out.println("[SinErrores]");
-            }
+            System.out.println("Compilacion Exitosa");
+            System.out.println("[SinErrores]");
+        } catch (ExcepcionLexica e) {
+            System.out.println("Error Lexico en linea " + e.getNroLinea() + ": " + e.getMessage());
+            System.out.println("[Error:" + e.getLexema() + "|" + e.getNroLinea() + "]");
+        } catch (ExcepcionSintactica e) {
+            System.out.println("Error Sintactico en linea " + e.getNroLinea() + ": " + e.getMessage());
+            System.out.println("[Error:" + e.getLexema() + "|" + e.getNroLinea() + "]");
         } catch (IOException e) {
             System.out.println("No se pudo procesar el archivo: " + args[0]);
         } finally {
             try {
                 gestorDeFuente.close();
             } catch (IOException e) {
+                // Nada que hacer si falla el cierre del archivo.
             }
         }
     }
