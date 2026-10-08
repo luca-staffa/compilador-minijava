@@ -1,12 +1,27 @@
 package analizadorsintactico;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
 import analizadorlexico.AnalizadorLexico;
 import analizadorlexico.Token;
+import analizadorsemantico.Atributo;
+import analizadorsemantico.Clase;
+import analizadorsemantico.Constructor;
+import analizadorsemantico.Interfaz;
+import analizadorsemantico.Metodo;
+import analizadorsemantico.Parametro;
+import analizadorsemantico.TablaDeSimbolos;
+import analizadorsemantico.Tipo;
+import analizadorsemantico.TipoArreglo;
+import analizadorsemantico.TipoParametro;
+import analizadorsemantico.TipoPrimitivo;
+import analizadorsemantico.TipoReferencia;
+import analizadorsemantico.TipoVoid;
 
 /**
  * Analizador Sintactico Descendente Recursivo para MiniJava.
@@ -15,6 +30,11 @@ import analizadorlexico.Token;
  * de la gramatica LL(1), eligiendo la produccion a aplicar segun los
  * primeros de sus partes derechas. Los terminales se consumen con match()
  * y los errores se reportan lanzando ExcepcionSintactica.
+ *
+ * Ademas, construye la Tabla de Simbolos a medida que reconoce las
+ * declaraciones (clases, interfaces, atributos, metodos, constructores y
+ * parametros), realizando los controles de nombres repetidos de la primera
+ * pasada.
  */
 public class AnalizadorSintactico {
 
@@ -125,10 +145,12 @@ public class AnalizadorSintactico {
             "op+", "op-", "op*", "op/", "op%");
 
     private final AnalizadorLexico analizadorLexico;
+    private final TablaDeSimbolos tablaDeSimbolos;
     private Token tokenActual;
 
-    public AnalizadorSintactico(AnalizadorLexico analizadorLexico) {
+    public AnalizadorSintactico(AnalizadorLexico analizadorLexico, TablaDeSimbolos tablaDeSimbolos) {
         this.analizadorLexico = analizadorLexico;
+        this.tablaDeSimbolos = tablaDeSimbolos;
     }
 
     /** Comienza el analisis sintactico desde el simbolo inicial. */
@@ -147,6 +169,12 @@ public class AnalizadorSintactico {
                     "se esperaba " + descripcion(nombreToken)
                             + " se encontro \"" + tokenActual.getLexema() + "\"");
         }
+    }
+
+    private Token consumir(String nombreToken) throws IOException {
+        Token consumido = tokenActual;
+        match(nombreToken);
+        return consumido;
     }
 
     private ExcepcionSintactica error(String esperado) {
@@ -187,54 +215,77 @@ public class AnalizadorSintactico {
     // <Clase> ::= class idClase <GenericidadOpcional> <HerenciaOpcional> { <ListaMiembros> }
     private void clase() throws IOException {
         match("pr_class");
-        match("idClase");
-        genericidadOpcional();
-        herenciaOpcional();
+        Token tokenNombre = consumir("idClase");
+        Clase clase = new Clase(tokenNombre, tablaDeSimbolos);
+        tablaDeSimbolos.insertar(clase);
+        tablaDeSimbolos.setClaseActual(clase);
+
+        String parametroGenerico = genericidadOpcional();
+        if (parametroGenerico != null) {
+            clase.setParametroGenerico(parametroGenerico);
+        }
+        herenciaOpcional(clase);
+
         match("llaveA");
         listaMiembros();
         match("llaveC");
+
+        clase.agregarConstructorPorDefecto();
+        tablaDeSimbolos.setMetodoActual(null);
+        tablaDeSimbolos.setClaseActual(null);
     }
 
     // <Interfaz> ::= interface idClase <GenericidadOpcional> <ExtensionOpcional> { <ListaMetodosInterfaz> }
     private void interfaz() throws IOException {
         match("pr_interface");
-        match("idClase");
-        genericidadOpcional();
-        extensionOpcional();
+        Token tokenNombre = consumir("idClase");
+        Interfaz interfaz = new Interfaz(tokenNombre, tablaDeSimbolos);
+        tablaDeSimbolos.insertar(interfaz);
+        tablaDeSimbolos.setInterfazActual(interfaz);
+
+        String parametroGenerico = genericidadOpcional();
+        if (parametroGenerico != null) {
+            interfaz.setParametroGenerico(parametroGenerico);
+        }
+        extensionOpcional(interfaz);
+
         match("llaveA");
         listaMetodosInterfaz();
         match("llaveC");
+
+        tablaDeSimbolos.setMetodoActual(null);
+        tablaDeSimbolos.setInterfazActual(null);
     }
 
     // <GenericidadOpcional> ::= < idGen > | epsilon
-    private void genericidadOpcional() throws IOException {
+    private String genericidadOpcional() throws IOException {
         if (actualEn(Set.of("op<"))) {
             match("op<");
-            match("idGen");
+            Token tokenParametro = consumir("idGen");
             match("op>");
-        } else {
-            // epsilon: no se hace nada
+            return tokenParametro.getLexema();
         }
+        return null;
     }
 
     // <HerenciaOpcional> ::= extends <TipoReferencia> | implements <TipoReferencia> | epsilon
-    private void herenciaOpcional() throws IOException {
+    private void herenciaOpcional(Clase clase) throws IOException {
         if (actualEn(Set.of("pr_extends"))) {
             match("pr_extends");
-            tipoReferencia();
+            clase.setAncestro(tipoReferencia(), false);
         } else if (actualEn(Set.of("pr_implements"))) {
             match("pr_implements");
-            tipoReferencia();
+            clase.setAncestro(tipoReferencia(), true);
         } else {
-            // epsilon: no se hace nada
+            // epsilon: extiende Object implicitamente
         }
     }
 
     // <ExtensionOpcional> ::= extends <TipoReferencia> | epsilon
-    private void extensionOpcional() throws IOException {
+    private void extensionOpcional(Interfaz interfaz) throws IOException {
         if (actualEn(Set.of("pr_extends"))) {
             match("pr_extends");
-            tipoReferencia();
+            interfaz.setAncestro(tipoReferencia());
         } else {
             // epsilon: no se hace nada
         }
@@ -261,7 +312,6 @@ public class AnalizadorSintactico {
     }
 
     // <Miembro> ::= <VisibilidadOpcional> <MiembroSinVisibilidad>
-    // Logro Visibilidad Mejorada E2: public/private opcionales para todo miembro.
     private void miembro() throws IOException {
         visibilidadOpcional();
         miembroSinVisibilidad();
@@ -285,85 +335,82 @@ public class AnalizadorSintactico {
     //                           | idClase <RestoTipoOConstructor>
     private void miembroSinVisibilidad() throws IOException {
         if (actualEn(Set.of("pr_void"))) {
-            metodoVoid();
+            metodoVoid(false);
         } else if (actualEn(Set.of("pr_static"))) {
             match("pr_static");
-            metodoResto();
+            metodoResto(true);
         } else if (actualEn(PRIMEROS_TIPO_PRIMITIVO)) {
-            tipoPrimitivo();
-            dimensionesOpcionales();
-            match("idMV");
-            metodoOAtributo();
+            Token tokenTipo = tokenActual;
+            TipoPrimitivo tipoBase = tipoPrimitivo();
+            int dimensiones = dimensionesOpcionales();
+            Token tokenNombre = consumir("idMV");
+            metodoOAtributo(conDimensiones(tipoBase, dimensiones, tokenTipo), tokenNombre);
         } else if (actualEn(Set.of("idGen"))) {
-            match("idGen");
-            dimensionesOpcionales();
-            match("idMV");
-            metodoOAtributo();
+            Token tokenTipo = consumir("idGen");
+            TipoParametro tipoBase = new TipoParametro(tokenTipo.getLexema(), tokenTipo);
+            int dimensiones = dimensionesOpcionales();
+            Token tokenNombre = consumir("idMV");
+            metodoOAtributo(conDimensiones(tipoBase, dimensiones, tokenTipo), tokenNombre);
         } else if (actualEn(Set.of("idClase"))) {
-            match("idClase");
-            restoTipoOConstructor();
+            Token tokenIdClase = consumir("idClase");
+            Tipo argumento = tipoGenericoOpcional();
+            if (actualEn(Set.of("parA"))) {
+                List<Parametro> parametros = argsFormales();
+                bloque();
+                tablaDeSimbolos.getClaseActual().agregarConstructor(
+                        new Constructor(tokenIdClase, parametros, tablaDeSimbolos));
+            } else {
+                TipoReferencia tipoBase = new TipoReferencia(tokenIdClase.getLexema(), argumento, tokenIdClase);
+                int dimensiones = dimensionesOpcionales();
+                Token tokenNombre = consumir("idMV");
+                metodoOAtributo(conDimensiones(tipoBase, dimensiones, tokenIdClase), tokenNombre);
+            }
         } else {
             throw error("un miembro de la clase (atributo, metodo o constructor)");
         }
     }
 
-    // <RestoTipoOConstructor> ::= <TipoGenericoOpcional> <TipoFinalOConstructor>
-    // Factorizacion profunda: tras idClase puede seguir un tipo (atributo/metodo)
-    // o directamente los argumentos formales (constructor sin visibilidad).
-    private void restoTipoOConstructor() throws IOException {
-        tipoGenericoOpcional();
-        tipoFinalOConstructor();
-    }
-
-    // <TipoFinalOConstructor> ::= <DimensionesOpcionales> idMetVar <MetodoOAtributo>
-    //                           | <ArgsFormales> <Bloque>
-    private void tipoFinalOConstructor() throws IOException {
-        if (actualEn(Set.of("corcheteA", "idMV"))) {
-            dimensionesOpcionales();
-            match("idMV");
-            metodoOAtributo();
-        } else if (actualEn(Set.of("parA"))) {
-            argsFormales();
-            bloque();
-        } else {
-            throw error("un atributo, un metodo o un constructor");
-        }
-    }
-
     // <MetodoOAtributo> ::= ; | = <ExpresionCompuesta> ; | <ArgsFormales> <Bloque>
-    // Logro Atributos Inicializados: el atributo puede inicializarse al declararse.
-    private void metodoOAtributo() throws IOException {
+    private void metodoOAtributo(Tipo tipo, Token tokenNombre) throws IOException {
         if (actualEn(Set.of("puntoComa"))) {
             match("puntoComa");
+            tablaDeSimbolos.getClaseActual().agregarAtributo(
+                    new Atributo(tokenNombre, tipo, tablaDeSimbolos));
         } else if (actualEn(Set.of("op="))) {
             match("op=");
             expresionCompuesta();
             match("puntoComa");
+            tablaDeSimbolos.getClaseActual().agregarAtributo(
+                    new Atributo(tokenNombre, tipo, tablaDeSimbolos));
         } else if (actualEn(Set.of("parA"))) {
-            argsFormales();
+            List<Parametro> parametros = argsFormales();
             bloque();
+            agregarMetodo(new Metodo(tokenNombre, tipo, parametros, false, tablaDeSimbolos));
         } else {
             throw error("';', una inicializacion o los argumentos formales de un metodo");
         }
     }
 
     // <MetodoVoid> ::= void idMetVar <ArgsFormales> <Bloque>
-    private void metodoVoid() throws IOException {
-        match("pr_void");
-        match("idMV");
-        argsFormales();
+    private void metodoVoid(boolean esEstatico) throws IOException {
+        Token tokenVoid = consumir("pr_void");
+        TipoVoid tipoRetorno = new TipoVoid(tokenVoid);
+        Token tokenNombre = consumir("idMV");
+        List<Parametro> parametros = argsFormales();
         bloque();
+        agregarMetodo(new Metodo(tokenNombre, tipoRetorno, parametros, esEstatico, tablaDeSimbolos));
     }
 
     // <MetodoResto> ::= <MetodoVoid> | <Tipo> idMetVar <ArgsFormales> <Bloque>
-    private void metodoResto() throws IOException {
+    private void metodoResto(boolean esEstatico) throws IOException {
         if (actualEn(Set.of("pr_void"))) {
-            metodoVoid();
+            metodoVoid(esEstatico);
         } else if (actualEn(PRIMEROS_TIPO)) {
-            tipo();
-            match("idMV");
-            argsFormales();
+            Tipo tipoRetorno = tipo();
+            Token tokenNombre = consumir("idMV");
+            List<Parametro> parametros = argsFormales();
             bloque();
+            agregarMetodo(new Metodo(tokenNombre, tipoRetorno, parametros, esEstatico, tablaDeSimbolos));
         } else {
             throw error("un tipo de retorno o 'void'");
         }
@@ -372,133 +419,144 @@ public class AnalizadorSintactico {
     // <MetodoInterfaz> ::= <VisibilidadOpcional> <TipoMetodo> idMetVar <ArgsFormales> ;
     private void metodoInterfaz() throws IOException {
         visibilidadOpcional();
-        tipoMetodo();
-        match("idMV");
-        argsFormales();
+        Tipo tipoRetorno = tipoMetodo();
+        Token tokenNombre = consumir("idMV");
+        List<Parametro> parametros = argsFormales();
         match("puntoComa");
+        tablaDeSimbolos.getInterfazActual().agregarMetodo(
+                new Metodo(tokenNombre, tipoRetorno, parametros, false, tablaDeSimbolos));
     }
 
-    // <Constructor> (se maneja via <MiembroSinVisibilidad> tras idClase)
+    private void agregarMetodo(Metodo metodo) {
+        if (tablaDeSimbolos.getClaseActual() != null) {
+            tablaDeSimbolos.getClaseActual().agregarMetodo(metodo);
+        } else {
+            tablaDeSimbolos.getInterfazActual().agregarMetodo(metodo);
+        }
+        tablaDeSimbolos.setMetodoActual(metodo);
+    }
 
     // <TipoMetodo> ::= <Tipo> | void
-    private void tipoMetodo() throws IOException {
+    private Tipo tipoMetodo() throws IOException {
         if (actualEn(Set.of("pr_void"))) {
-            match("pr_void");
+            Token tokenVoid = consumir("pr_void");
+            return new TipoVoid(tokenVoid);
         } else if (actualEn(PRIMEROS_TIPO)) {
-            tipo();
+            return tipo();
         } else {
             throw error("un tipo de retorno o 'void'");
         }
     }
 
     // <Tipo> ::= <TipoBase> <DimensionesOpcionales>
-    private void tipo() throws IOException {
-        tipoBase();
-        dimensionesOpcionales();
+    private Tipo tipo() throws IOException {
+        Token tokenBase = tokenActual;
+        Tipo tipoBase = tipoBase();
+        int dimensiones = dimensionesOpcionales();
+        return conDimensiones(tipoBase, dimensiones, tokenBase);
+    }
+
+    private static Tipo conDimensiones(Tipo tipoBase, int dimensiones, Token token) {
+        return dimensiones == 0 ? tipoBase : new TipoArreglo(tipoBase, dimensiones, token);
     }
 
     // <TipoBase> ::= <TipoPrimitivo> | <TipoReferencia> | idGen
-    private void tipoBase() throws IOException {
+    private Tipo tipoBase() throws IOException {
         if (actualEn(PRIMEROS_TIPO_PRIMITIVO)) {
-            tipoPrimitivo();
+            return tipoPrimitivo();
         } else if (actualEn(Set.of("idClase"))) {
-            tipoReferencia();
+            return tipoReferencia();
         } else if (actualEn(Set.of("idGen"))) {
-            match("idGen");
+            Token tokenParametro = consumir("idGen");
+            return new TipoParametro(tokenParametro.getLexema(), tokenParametro);
         } else {
             throw error("un tipo (primitivo, clase o parametro generico)");
         }
     }
 
     // <DimensionesOpcionales> ::= [] <DimensionesOpcionales> | epsilon
-    private void dimensionesOpcionales() throws IOException {
+    private int dimensionesOpcionales() throws IOException {
         if (actualEn(Set.of("corcheteA"))) {
             match("corcheteA");
             match("corcheteC");
-            dimensionesOpcionales();
-        } else {
-            // epsilon: no se hace nada
+            return 1 + dimensionesOpcionales();
         }
+        return 0;
     }
 
     // <TipoReferencia> ::= idClase <TipoGenericoOpcional>
-    private void tipoReferencia() throws IOException {
-        match("idClase");
-        tipoGenericoOpcional();
+    private TipoReferencia tipoReferencia() throws IOException {
+        Token tokenIdClase = consumir("idClase");
+        Tipo argumento = tipoGenericoOpcional();
+        return new TipoReferencia(tokenIdClase.getLexema(), argumento, tokenIdClase);
     }
 
     // <TipoPrimitivo> ::= boolean | char | int
-    private void tipoPrimitivo() throws IOException {
+    private TipoPrimitivo tipoPrimitivo() throws IOException {
+        Token tokenTipo = tokenActual;
         if (actualEn(Set.of("pr_boolean"))) {
             match("pr_boolean");
+            return new TipoPrimitivo(TipoPrimitivo.Base.BOOLEAN, tokenTipo);
         } else if (actualEn(Set.of("pr_char"))) {
             match("pr_char");
+            return new TipoPrimitivo(TipoPrimitivo.Base.CHAR, tokenTipo);
         } else if (actualEn(Set.of("pr_int"))) {
             match("pr_int");
+            return new TipoPrimitivo(TipoPrimitivo.Base.INT, tokenTipo);
         } else {
             throw error("un tipo primitivo ('boolean', 'char' o 'int')");
         }
     }
 
     // <TipoGenericoOpcional> ::= < <InstanciadoOParametrico> > | epsilon
-    private void tipoGenericoOpcional() throws IOException {
+    private Tipo tipoGenericoOpcional() throws IOException {
         if (actualEn(Set.of("op<"))) {
             match("op<");
-            instanciadoOParametrico();
+            Tipo argumento = instanciadoOParametrico();
             match("op>");
-        } else {
-            // epsilon: no se hace nada
+            return argumento;
         }
+        return null;
     }
 
     // <InstanciadoOParametrico> ::= idGen | idClase
-    private void instanciadoOParametrico() throws IOException {
+    private Tipo instanciadoOParametrico() throws IOException {
         if (actualEn(Set.of("idGen"))) {
-            match("idGen");
+            Token tokenParametro = consumir("idGen");
+            return new TipoParametro(tokenParametro.getLexema(), tokenParametro);
         } else if (actualEn(Set.of("idClase"))) {
-            match("idClase");
+            Token tokenIdClase = consumir("idClase");
+            return new TipoReferencia(tokenIdClase.getLexema(), null, tokenIdClase);
         } else {
             throw error("un id de clase o un parametro de tipo generico");
         }
     }
 
     // <ArgsFormales> ::= ( <ListaArgsFormalesOpcional> )
-    private void argsFormales() throws IOException {
+    private List<Parametro> argsFormales() throws IOException {
         match("parA");
-        listaArgsFormalesOpcional();
+        List<Parametro> parametros = listaArgsFormalesOpcional();
         match("parC");
+        return parametros;
     }
 
     // <ListaArgsFormalesOpcional> ::= <ListaArgsFormales> | epsilon
-    private void listaArgsFormalesOpcional() throws IOException {
-        if (actualEn(PRIMEROS_TIPO)) {
-            listaArgsFormales();
-        } else {
-            // epsilon: no se hace nada
+    private List<Parametro> listaArgsFormalesOpcional() throws IOException {
+        List<Parametro> parametros = new ArrayList<>();
+        if (!actualEn(PRIMEROS_TIPO)) {
+            return parametros;
         }
-    }
-
-    // <ListaArgsFormales> ::= <ArgFormal> <LAFResto>
-    private void listaArgsFormales() throws IOException {
-        argFormal();
-        lAFResto();
-    }
-
-    // <LAFResto> ::= , <ArgFormal> <LAFResto> | epsilon
-    private void lAFResto() throws IOException {
-        if (actualEn(Set.of("coma"))) {
+        int posicion = 0;
+        Tipo tipo = tipo();
+        Token tokenNombre = consumir("idMV");
+        parametros.add(new Parametro(tokenNombre, tipo, posicion++, tablaDeSimbolos));
+        while (actualEn(Set.of("coma"))) {
             match("coma");
-            argFormal();
-            lAFResto();
-        } else {
-            // epsilon: no se hace nada
+            tipo = tipo();
+            tokenNombre = consumir("idMV");
+            parametros.add(new Parametro(tokenNombre, tipo, posicion++, tablaDeSimbolos));
         }
-    }
-
-    // <ArgFormal> ::= <Tipo> idMetVar
-    private void argFormal() throws IOException {
-        tipo();
-        match("idMV");
+        return parametros;
     }
 
     // <Bloque> ::= { <ListaSentencias> }
@@ -649,8 +707,6 @@ public class AnalizadorSintactico {
 
     // <ExpresionBasica> ::= <OperadorUnario> <Operando> <PosfijoOpcional>
     //                     | <Operando> <PosfijoOpcional>
-    // Logro Operadores Posfijos E2: el posfijo va solo al final de la
-    // expresion basica completa (referencia incluida), para mantener LL(1).
     private void expresionBasica() throws IOException {
         if (actualEn(PRIMEROS_OPERADOR_UNARIO)) {
             operadorUnario();

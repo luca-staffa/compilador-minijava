@@ -9,3 +9,6 @@ class Init {
     int[] arreglo = new int[3];
     ClaseBase obj = new ClaseBase();
 }
+
+class ClaseBase {
+}

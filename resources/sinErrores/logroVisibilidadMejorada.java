@@ -21,3 +21,6 @@ interface IV {
     public void b();
     private int c();
 }
+
+class ClaseBase {
+}

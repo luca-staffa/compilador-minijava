@@ -18,3 +18,7 @@ class Texto implements Procesador {
         return base;
     }
 }
+
+interface Procesador {
+    char[] procesar(char[] datos, int inicio, boolean mayusculas);
+}

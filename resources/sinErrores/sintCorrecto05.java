@@ -7,3 +7,7 @@ interface Lista<E> extends Coleccion<E> {
     int tamanio();
     boolean esVacia();
 }
+
+interface Coleccion<T> {
+    void agregar(T elem);
+}

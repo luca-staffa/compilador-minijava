@@ -11,3 +11,6 @@ class Mapa<K> extends Diccionario<K> {
         tamanio = cap;
     }
 }
+
+class Diccionario<C> {
+}
