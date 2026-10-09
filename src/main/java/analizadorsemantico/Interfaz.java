@@ -71,8 +71,61 @@ public class Interfaz extends Entidad {
             for (Metodo metodo : metodos.values()) {
                 metodo.estaBienDeclarada();
             }
+            verificarRedefiniciones();
         } finally {
             ts.setInterfazActual(null);
+        }
+    }
+
+    /**
+     * Un metodo de la interfaz puede redeclarar uno heredado de la interfaz
+     * extendida solo si ambas signaturas coinciden exactamente (luego de
+     * aplicar la instanciacion generica correspondiente).
+     */
+    private void verificarRedefiniciones() {
+        for (Metodo metodo : metodos.values()) {
+            Map<String, Tipo> sustitucion = new HashMap<>();
+            Entidad actual = null;
+            if (ancestro != null) {
+                Entidad entidadAncestro = ts.getTipo(ancestro.getNombreReferencia());
+                if (!(entidadAncestro instanceof Interfaz)) {
+                    return;
+                }
+                actual = entidadAncestro;
+                sustitucion = sustitucionPara(ancestro, (Interfaz) entidadAncestro);
+            }
+            while (actual instanceof Interfaz) {
+                Interfaz interfazAncestro = (Interfaz) actual;
+                Metodo heredado = interfazAncestro.metodos.get(metodo.getClave());
+                if (heredado != null) {
+                    heredado = heredado.instanciar(sustitucion);
+                    if (!metodo.mismaSignatura(heredado)) {
+                        errorEn(metodo.getToken(),
+                                "el metodo " + metodo.getNombre() + " con " + metodo.getAridad()
+                                        + " parametro(s) no redefine correctamente al metodo heredado de la interfaz "
+                                        + interfazAncestro.getNombre());
+                    }
+                    break;
+                }
+                if (interfazAncestro.ancestro == null) {
+                    break;
+                }
+                Entidad siguiente = ts.getTipo(interfazAncestro.ancestro.getNombreReferencia());
+                if (!(siguiente instanceof Interfaz)) {
+                    break;
+                }
+                Map<String, Tipo> nuevaSustitucion = new HashMap<>();
+                String parametro = ((Interfaz) siguiente).getParametroGenerico();
+                if (parametro != null) {
+                    Tipo argumento = interfazAncestro.ancestro.getArgumento();
+                    nuevaSustitucion.put(parametro,
+                            argumento != null
+                                    ? argumento.sustituir(sustitucion)
+                                    : new TipoParametro(parametro, interfazAncestro.ancestro.getToken()));
+                }
+                sustitucion = nuevaSustitucion;
+                actual = siguiente;
+            }
         }
     }
 

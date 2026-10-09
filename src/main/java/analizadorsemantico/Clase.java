@@ -239,11 +239,28 @@ public class Clase extends Entidad {
         Interfaz interfaz = (Interfaz) entidadAncestro;
         for (Metodo requerido : interfaz.getMetodosInstanciados(sustitucionPara(ancestro, interfaz)).values()) {
             Metodo propio = metodos.get(requerido.getClave());
-            if (propio == null || propio.esEstatico() || !propio.mismaSignatura(requerido)) {
+            if (propio != null && !propio.esEstatico() && propio.mismaSignatura(requerido)) {
+                continue;
+            }
+            if (!tieneMetodoHeredadoCompatible(requerido)) {
                 error("la clase " + nombre + " no implementa el metodo " + requerido.getNombre()
                         + " de la interfaz " + interfaz.getNombre());
             }
         }
+    }
+
+    /**
+     * La unica herencia de clases posible para una clase que implementa una
+     * interfaz es la implicita desde Object, de donde puede heredar un metodo
+     * de instancia compatible (por ejemplo toString).
+     */
+    private boolean tieneMetodoHeredadoCompatible(Metodo requerido) {
+        Entidad object = ts.getTipo("Object");
+        if (!(object instanceof Clase)) {
+            return false;
+        }
+        Metodo heredado = ((Clase) object).getMetodos().get(requerido.getClave());
+        return heredado != null && !heredado.esEstatico() && heredado.mismaSignatura(requerido);
     }
 
     private static Map<String, Tipo> sustitucionPara(TipoReferencia referencia, Entidad ancestro) {
