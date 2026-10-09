@@ -176,19 +176,17 @@ public class Clase extends Entidad {
     // ------------------------------------------------------------------
 
     private void verificarRedefiniciones() {
-        if (ancestro == null) {
-            Entidad object = ts.getTipo("Object");
-            if (object instanceof Clase) {
-                recorrerAncestros(new HashMap<>(), (Clase) object);
+        if (ancestro != null && !ancestroEsInterfaz) {
+            Entidad entidadAncestro = ts.getTipo(ancestro.getNombreReferencia());
+            if (entidadAncestro instanceof Clase) {
+                recorrerAncestros(sustitucionPara(ancestro, entidadAncestro), (Clase) entidadAncestro);
             }
             return;
         }
-        if (ancestroEsInterfaz) {
-            return;
-        }
-        Entidad entidadAncestro = ts.getTipo(ancestro.getNombreReferencia());
-        if (entidadAncestro instanceof Clase) {
-            recorrerAncestros(sustitucionPara(ancestro, entidadAncestro), (Clase) entidadAncestro);
+        // Sin extends explicito o con implements: toda clase extiende Object.
+        Entidad object = ts.getTipo("Object");
+        if (object instanceof Clase) {
+            recorrerAncestros(new HashMap<>(), (Clase) object);
         }
     }
 
@@ -224,6 +222,12 @@ public class Clase extends Entidad {
                                     : new TipoParametro(parametro, claseAncestro.ancestro.getToken()));
                 }
                 recorrerAncestros(nuevaSustitucion, (Clase) siguiente);
+            }
+        } else if (!claseAncestro.getNombre().equals("Object")) {
+            // Toda clase extiende Object, tambien cuando solo implementa una interfaz.
+            Entidad object = ts.getTipo("Object");
+            if (object instanceof Clase) {
+                recorrerAncestros(new HashMap<>(), (Clase) object);
             }
         }
     }
@@ -289,15 +293,7 @@ public class Clase extends Entidad {
             return;
         }
 
-        if (ancestro == null) {
-            Entidad object = ts.getTipo("Object");
-            if (object instanceof Clase) {
-                Clase claseAncestro = (Clase) object;
-                claseAncestro.consolidar();
-                heredarAtributos(claseAncestro, new HashMap<>());
-                heredarMetodos(claseAncestro, new HashMap<>());
-            }
-        } else if (!ancestroEsInterfaz) {
+        if (ancestro != null && !ancestroEsInterfaz) {
             Entidad entidadAncestro = ts.getTipo(ancestro.getNombreReferencia());
             if (entidadAncestro instanceof Clase) {
                 Clase claseAncestro = (Clase) entidadAncestro;
@@ -305,6 +301,15 @@ public class Clase extends Entidad {
                 Map<String, Tipo> sustitucion = sustitucionPara(ancestro, claseAncestro);
                 heredarAtributos(claseAncestro, sustitucion);
                 heredarMetodos(claseAncestro, sustitucion);
+            }
+        } else {
+            // Toda clase extiende Object: sin extends explicito o con implements.
+            Entidad object = ts.getTipo("Object");
+            if (object instanceof Clase) {
+                Clase claseObject = (Clase) object;
+                claseObject.consolidar();
+                heredarAtributos(claseObject, new HashMap<>());
+                heredarMetodos(claseObject, new HashMap<>());
             }
         }
 

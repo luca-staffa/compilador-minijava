@@ -1,6 +1,6 @@
 #!/bin/sh
 # Compila y ejecuta los testers JUnit (equivalente Windows: CorrerTests.bat).
-# Requiere que el working directory sea codigo/ (el script lo hace solo).
+# Requiere ejecutarse desde la raiz del proyecto (el script se posiciona solo).
 set -e
 cd "$(dirname "$0")"
 

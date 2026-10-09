@@ -104,7 +104,7 @@ error, y finaliza la ejecución.
 
 {\footnotesize
 \begin{verbatim}
-codigo/
+compilador-minijava/
 |-- Compilar.sh / Compilar.bat          Compila y genera Compilador.jar
 |-- CorrerTests.sh / CorrerTests.bat    Compila y ejecuta los testers JUnit
 |-- lib/                                Jars de JUnit 4 y Hamcrest (se autodescargan)
@@ -359,7 +359,7 @@ java -jar Compilador.jar resources/sinErrores/semCorrecto01.java
 
 \subsection{Comandos manuales equivalentes}
 
-Compilar (desde \texttt{codigo/}):
+Compilar (desde \texttt{compilador-minijava/}):
 
 {\footnotesize
 \begin{verbatim}
@@ -373,7 +373,7 @@ jar cfe Compilador.jar moduloprincipal.ModuloPrincipal -C build/classes .
 \end{verbatim}
 }
 
-Correr los tests (desde \texttt{codigo/}, con JUnit 4.13.2 y Hamcrest 1.3 en
+Correr los tests (desde \texttt{compilador-minijava/}, con JUnit 4.13.2 y Hamcrest 1.3 en
 \texttt{lib/}):
 
 {\footnotesize
@@ -393,7 +393,7 @@ En Windows el separador del classpath es \texttt{;} en lugar de \texttt{:}.
 
 Se incluyen los casos provistos por la cátedra y casos propios desarrollados para
 esta etapa (el diseño de los casos de prueba es responsabilidad del alumno).
-Resultado actual: \textbf{89/89 casos OK}.
+Resultado actual: \textbf{94/94 casos OK}.
 
 Los casos sin errores cubren: predefinidas y redefinición válida de
 \texttt{toString}; herencia encadenada; redefinición exacta; sobrecarga por aridad;
@@ -406,7 +406,9 @@ Los casos con errores cubren: nombres de tipo repetidos; redeclaración de las
 predefinidas; \texttt{extends}/\texttt{implements}/extensión a tipos inexistentes o
 de tipo equivocado; herencia y extensión circular; atributos repetidos y choque con
 atributos heredados; métodos repetidos por \texttt{(nombre, aridad)};
-redefiniciones con firma distinta; conflictos entre métodos estáticos y de
+redefiniciones con firma distinta (incluida la redefinición inválida de
+\texttt{toString} de \texttt{Object} en descendientes directos e indirectos, y en
+clases que implementan interfaces); conflictos entre métodos estáticos y de
 instancia heredados; métodos de interfaz no implementados o implementados de forma
 estática; constructores con aridad repetida o con nombre distinto al de la clase;
 parámetros repetidos; tipos inválidos en atributos, retornos y parámetros;

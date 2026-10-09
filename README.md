@@ -15,7 +15,7 @@ Solo se necesitan `javac`, `jar` y `java` de cualquier JDK 21 o superior
 
 ## Compilación
 
-Desde `codigo/`:
+Desde `compilador-minijava/`:
 
 ```
 ./Compilar.sh             # compila y genera Compilador.jar  (Windows: Compilar.bat)
@@ -87,17 +87,19 @@ parámetros repetidos en una misma unidad.
 
 **Segunda pasada (`estaBienDeclarada`).** Se controlan tipos válidos y
 parámetros genéricos, relaciones de herencia (existe y es del tipo correcto),
-circularidad de clases y de interfaces.
+circularidad de clases y de interfaces, redefiniciones de métodos (incluidos los
+conflictos con métodos estáticos heredados) y el contrato de interfaces.
 
 **Consolidación (`consolidar`).** Incorpora los miembros heredados de clases e
 interfaces con la sustitución del parámetro genérico correspondiente
-(`extends A<X>` instancia, `extends A` conserva el nombre), valida las
-redefiniciones, los conflictos con métodos estáticos, el choque de atributos
-heredados y el contrato de interfaces.
+(`extends A<X>` instancia, `extends A` conserva el nombre) y controla el choque
+de un atributo propio con un atributo heredado. Toda clase extiende `Object`
+(explícita o implícitamente, también cuando solo implementa una interfaz), por lo
+que la consolidación incorpora los miembros heredados de `Object`.
 
 ## Tests
 
-Desde `codigo/`:
+Desde `compilador-minijava/`:
 
 ```
 ./CorrerTests.sh          # compila y ejecuta los testers JUnit  (Windows: CorrerTests.bat)
@@ -107,7 +109,7 @@ Desde `codigo/`:
 `hamcrest-core-1.3.jar` en `lib/` si no están (requiere `curl`); si no hay red,
 se pueden descargar a mano de Maven Central y dejarlos en esa carpeta.
 
-Comandos manuales equivalentes (desde `codigo/`):
+Comandos manuales equivalentes (desde `compilador-minijava/`):
 
 ```
 javac -cp "build/classes:lib/junit-4.13.2.jar:lib/hamcrest-core-1.3.jar" \
