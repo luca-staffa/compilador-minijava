@@ -83,10 +83,13 @@ número de línea (formato `///[Error:lexema|nroLinea]`, igual que en la Etapa 2
 **Primera pasada (durante el parseo).** Se controlan nombres repetidos:
 tipos (clases/interfaces), atributos de una clase, métodos con la misma clave
 `(nombre, aridad)` en una clase o interfaz, constructores con la misma aridad y
-parámetros repetidos en una misma unidad.
+parámetros repetidos en una misma unidad. Además, al parsear una instanciación
+`new`, se admite la notación diamante (`new Caja<>()`) solo si la clase instanciada
+declara un parámetro de tipo.
 
 **Segunda pasada (`estaBienDeclarada`).** Se controlan tipos válidos y
-parámetros genéricos, relaciones de herencia (existe y es del tipo correcto),
+parámetros genéricos (incluidos los tipos genéricos anidados, por ejemplo
+`Caja<Par<String>>`), relaciones de herencia (existe y es del tipo correcto),
 circularidad de clases y de interfaces, redefiniciones de métodos (incluidos los
 conflictos con métodos estáticos heredados) y el contrato de interfaces.
 

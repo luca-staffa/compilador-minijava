@@ -45,7 +45,15 @@ controles corresponden a la Etapa 4.
 
 Se implementan los logros de la etapa anterior que siguen vigentes (atributos
 inicializados, operadores posfijos y visibilidad mejorada) y el manejo de archivos
-eficiente. No se implementan los logros opcionales de la Etapa 3 (modificadores
+eficiente. Como logro de esta etapa se implementa \textbf{Genericidad Avanzada E3}:
+se admiten y controlan tipos genéricos anidados (por ejemplo
+\texttt{Caja<Par<String>>}) en atributos, retornos, parámetros y cláusulas de
+herencia e implementación. Este mismo trabajo cubre el logro
+\textbf{Genericidad Avanzada E2} (requisito del anterior): se admiten tipos genéricos
+anidados y la \emph{notación diamante}, que solo se acepta al instanciar una clase
+genérica (\texttt{new Caja<>()}); si el tipo instanciado no declara un parámetro de
+tipo, o si el diamante aparece fuera de una instanciación, se reporta el error. No se
+implementan los restantes logros opcionales de la Etapa 3 (modificadores
 \texttt{sealed}/\texttt{final}, herencia múltiple de interfaces ni métodos
 genéricos), que requieren extender el léxico y la gramática.
 
@@ -267,7 +275,9 @@ Se ejecuta una vez finalizado el parseo. Controla:
         (clase, interfaz o entidad predefinida);
   \item que el argumento genérico sea válido: el tipo referenciado debe declarar un
         parámetro de tipo y el argumento debe ser un parámetro de tipo válido en el
-        contexto o un tipo existente;
+        contexto o un tipo existente; el control es recursivo, de modo que admite y
+        valida \textbf{tipos genéricos anidados} (por ejemplo \texttt{Caja<Par<String>>},
+        \texttt{Base<Par<Caja<T>>>});
   \item que un parámetro de tipo solo se use dentro de la clase o interfaz que lo
         declara;
   \item que \texttt{extends} apunte a una clase existente, \texttt{implements} a una
@@ -393,13 +403,15 @@ En Windows el separador del classpath es \texttt{;} en lugar de \texttt{:}.
 
 Se incluyen los casos provistos por la cátedra y casos propios desarrollados para
 esta etapa (el diseño de los casos de prueba es responsabilidad del alumno).
-Resultado actual: \textbf{94/94 casos OK}.
+Resultado actual: \textbf{100/100 casos OK}.
 
 Los casos sin errores cubren: predefinidas y redefinición válida de
 \texttt{toString}; herencia encadenada; redefinición exacta; sobrecarga por aridad;
 implementación de interfaces (simples, con extensión y genéricas); clases genéricas
 con parámetros en atributos, retornos y parámetros; herencia genérica con y sin
-argumento; redefinición tras instanciar genéricos; constructores de distinta aridad
+argumento; redefinición tras instanciar genéricos; tipos genéricos anidados en
+atributos, \texttt{extends} e \texttt{implements}; notación diamante al instanciar
+clases genéricas (\texttt{new Caja<>()}); constructores de distinta aridad
 y constructor por defecto; arreglos multidimensionales; y métodos estáticos.
 
 Los casos con errores cubren: nombres de tipo repetidos; redeclaración de las
@@ -412,7 +424,8 @@ clases que implementan interfaces); conflictos entre métodos estáticos y de
 instancia heredados; métodos de interfaz no implementados o implementados de forma
 estática; constructores con aridad repetida o con nombre distinto al de la clase;
 parámetros repetidos; tipos inválidos en atributos, retornos y parámetros;
-argumentos genéricos sobre tipos no genéricos o con tipos inexistentes; y uso de
+argumentos genéricos sobre tipos no genéricos o con tipos inexistentes (incluidos
+los anidados); uso del diamante sobre una clase no genérica; y uso de
 parámetros de tipo fuera de su contexto.
 
 \end{document}

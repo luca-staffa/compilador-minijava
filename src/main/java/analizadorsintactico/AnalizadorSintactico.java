@@ -12,6 +12,8 @@ import analizadorlexico.Token;
 import analizadorsemantico.Atributo;
 import analizadorsemantico.Clase;
 import analizadorsemantico.Constructor;
+import analizadorsemantico.Entidad;
+import analizadorsemantico.ExcepcionSemantica;
 import analizadorsemantico.Interfaz;
 import analizadorsemantico.Metodo;
 import analizadorsemantico.Parametro;
@@ -491,6 +493,30 @@ public class AnalizadorSintactico {
         return new TipoReferencia(tokenIdClase.getLexema(), argumento, tokenIdClase);
     }
 
+    // <TipoReferenciaInstanciacion> ::= idClase <InstanciacionOpcional>
+    // La notacion diamante (<>) solo se admite al instanciar una clase generica.
+    private void tipoReferenciaInstanciacion() throws IOException {
+        Token tokenIdClase = consumir("idClase");
+        if (!actualEn(Set.of("op<"))) {
+            return;
+        }
+        match("op<");
+        if (actualEn(Set.of("op>"))) {
+            match("op>");
+            Entidad entidad = tablaDeSimbolos.getTipo(tokenIdClase.getLexema());
+            if (entidad != null && entidad.getParametroGenerico() == null) {
+                throw new ExcepcionSemantica(
+                        tokenIdClase.getLexema(),
+                        tokenIdClase.getNroLinea(),
+                        "el operador diamante <> solo puede usarse al instanciar una clase generica, y "
+                                + tokenIdClase.getLexema() + " no es generica");
+            }
+            return;
+        }
+        instanciadoOParametrico();
+        match("op>");
+    }
+
     // <TipoPrimitivo> ::= boolean | char | int
     private TipoPrimitivo tipoPrimitivo() throws IOException {
         Token tokenTipo = tokenActual;
@@ -519,14 +545,15 @@ public class AnalizadorSintactico {
         return null;
     }
 
-    // <InstanciadoOParametrico> ::= idGen | idClase
+    // <InstanciadoOParametrico> ::= idGen | idClase <TipoGenericoOpcional>
     private Tipo instanciadoOParametrico() throws IOException {
         if (actualEn(Set.of("idGen"))) {
             Token tokenParametro = consumir("idGen");
             return new TipoParametro(tokenParametro.getLexema(), tokenParametro);
         } else if (actualEn(Set.of("idClase"))) {
             Token tokenIdClase = consumir("idClase");
-            return new TipoReferencia(tokenIdClase.getLexema(), null, tokenIdClase);
+            Tipo argumento = tipoGenericoOpcional();
+            return new TipoReferencia(tokenIdClase.getLexema(), argumento, tokenIdClase);
         } else {
             throw error("un id de clase o un parametro de tipo generico");
         }
@@ -806,12 +833,12 @@ public class AnalizadorSintactico {
         }
     }
 
-    // <ArregloOConstructor> ::= <TipoReferencia> <AOC2>
+    // <ArregloOConstructor> ::= <TipoReferenciaInstanciacion> <AOC2>
     //                         | <TipoPrimitivo> <DimensionesConTamanio>
     //                         | idGen <DimensionesConTamanio>
     private void arregloOConstructor() throws IOException {
         if (actualEn(Set.of("idClase"))) {
-            tipoReferencia();
+            tipoReferenciaInstanciacion();
             aOC2();
         } else if (actualEn(PRIMEROS_TIPO_PRIMITIVO)) {
             tipoPrimitivo();
