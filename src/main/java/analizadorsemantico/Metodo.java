@@ -10,7 +10,7 @@ import java.util.Set;
 import analizadorlexico.Token;
 
 /** Metodo de instancia o estatico de una clase o interfaz. */
-public class Metodo extends Entidad {
+public class Metodo extends Unidad {
     private final Tipo tipoRetorno;
     private final Map<Integer, Parametro> params;
     private final boolean esEstatico;
@@ -106,6 +106,20 @@ public class Metodo extends Entidad {
         tipoRetorno.esValidoEn(ts, parametroContexto());
         for (Parametro parametro : params.values()) {
             parametro.estaBienDeclarada();
+        }
+        if (esEstatico && parametroContexto() != null) {
+            if (SemanticaUtil.contieneParametro(tipoRetorno, parametroContexto())) {
+                errorEn(tipoRetorno.getToken(),
+                        "no se puede usar el parametro de tipo " + parametroContexto()
+                                + " en el retorno de un metodo estatico");
+            }
+            for (Parametro parametro : params.values()) {
+                if (SemanticaUtil.contieneParametro(parametro.getTipo(), parametroContexto())) {
+                    errorEn(parametro.getToken(),
+                            "no se puede usar el parametro de tipo " + parametroContexto()
+                                    + " en un parametro de un metodo estatico");
+                }
+            }
         }
     }
 }

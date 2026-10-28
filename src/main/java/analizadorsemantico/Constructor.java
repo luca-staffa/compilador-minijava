@@ -9,7 +9,7 @@ import java.util.Set;
 import analizadorlexico.Token;
 
 /** Constructor de una clase. */
-public class Constructor extends Entidad {
+public class Constructor extends Unidad {
     private final Map<Integer, Parametro> params;
 
     public Constructor(Token token, List<Parametro> parametros, TablaDeSimbolos ts) {
@@ -39,6 +39,11 @@ public class Constructor extends Entidad {
 
     public int getAridad() {
         return params.size();
+    }
+
+    @Override
+    public boolean esEstatico() {
+        return false;
     }
 
     @Override

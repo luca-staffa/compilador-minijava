@@ -11,11 +11,21 @@ import analizadorlexico.Token;
 public class TipoReferencia extends Tipo {
     private final String nombre;
     private final Tipo argumento;
+    private boolean diamante;
 
     public TipoReferencia(String nombre, Tipo argumento, Token token) {
         super(token);
         this.nombre = nombre;
         this.argumento = argumento;
+    }
+
+    /** Marca el uso de la notacion diamante (<>) al instanciar. */
+    public void marcarDiamante() {
+        this.diamante = true;
+    }
+
+    public boolean esDiamante() {
+        return diamante;
     }
 
     public String getNombreReferencia() {
@@ -40,6 +50,28 @@ public class TipoReferencia extends Tipo {
 
     @Override
     public void esValidoEn(TablaDeSimbolos ts, String parametroContexto) {
+        if (!ts.esTipo(nombre)) {
+            error("el tipo " + nombre + " no esta declarado");
+        }
+        Entidad entidad = ts.getTipo(nombre);
+        if (entidad.getParametroGenerico() != null && argumento == null) {
+            error("el tipo " + nombre
+                    + " es generico y requiere un argumento de tipo (no se admiten tipos raw)");
+        }
+        if (argumento != null) {
+            if (entidad.getParametroGenerico() == null) {
+                error("el tipo " + nombre + " no es generico y no admite argumentos de tipo");
+            }
+            argumento.esValidoEn(ts, parametroContexto);
+        }
+    }
+
+    /**
+     * Variante para clausulas de herencia o implementacion: la excepcion de
+     * MiniJava permite heredar de una entidad generica sin argumento (se
+     * conserva el parametro original), por lo que no se exige argumento.
+     */
+    public void esValidoEnHerencia(TablaDeSimbolos ts, String parametroContexto) {
         if (!ts.esTipo(nombre)) {
             error("el tipo " + nombre + " no esta declarado");
         }

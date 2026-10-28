@@ -20,6 +20,8 @@ public class TablaDeSimbolos {
     private Clase claseActual;
     private Interfaz interfazActual;
     private Metodo metodoActual;
+    private Entidad unidadActual;
+    private Bloque bloqueActual;
 
     public TablaDeSimbolos() {
         inicializarPredefinidas();
@@ -93,6 +95,47 @@ public class TablaDeSimbolos {
         this.metodoActual = metodoActual;
     }
 
+    public Entidad getUnidadActual() {
+        return unidadActual;
+    }
+
+    public void setUnidadActual(Entidad unidadActual) {
+        this.unidadActual = unidadActual;
+    }
+
+    public Bloque getBloqueActual() {
+        return bloqueActual;
+    }
+
+    public void setBloqueActual(Bloque bloqueActual) {
+        this.bloqueActual = bloqueActual;
+    }
+
+    /** Abre un nuevo ambito lexico hijo del actual. */
+    public void entrarBloque() {
+        bloqueActual = new Bloque(bloqueActual);
+    }
+
+    /** Cierra el ambito lexico actual y restaura el contenedor. */
+    public void salirBloque() {
+        if (bloqueActual != null) {
+            bloqueActual = bloqueActual.getPadre();
+        }
+    }
+
+    /** Busca una variable local visible desde el bloque actual hacia afuera. */
+    public VariableLocal buscarVariableLocal(String nombre) {
+        Bloque bloque = bloqueActual;
+        while (bloque != null) {
+            VariableLocal variable = bloque.getVariable(nombre);
+            if (variable != null) {
+                return variable;
+            }
+            bloque = bloque.getPadre();
+        }
+        return null;
+    }
+
     // ------------------------------------------------------------------
     // Chequeo de declaraciones y consolidacion
     // ------------------------------------------------------------------
@@ -112,6 +155,37 @@ public class TablaDeSimbolos {
         }
         for (Clase clase : clases.values()) {
             clase.consolidar();
+        }
+    }
+
+    /**
+     * Chequeo de sentencias: recorre el cuerpo de cada unidad declarada por el
+     * usuario en la clase donde fue declarada. Los cuerpos heredados por
+     * consolidacion no se vuelven a chequear.
+     */
+    public void chequearCuerpos() {
+        Clase claseAnterior = claseActual;
+        Interfaz interfazAnterior = interfazActual;
+        Metodo metodoAnterior = metodoActual;
+        Entidad unidadAnterior = unidadActual;
+        Bloque bloqueAnterior = bloqueActual;
+        try {
+            for (Clase clase : clases.values()) {
+                claseActual = clase;
+                interfazActual = null;
+                metodoActual = null;
+                for (Unidad unidad : clase.getUnidadesPropias()) {
+                    unidadActual = unidad;
+                    bloqueActual = null;
+                    unidad.chequearCuerpo(this);
+                }
+            }
+        } finally {
+            claseActual = claseAnterior;
+            interfazActual = interfazAnterior;
+            metodoActual = metodoAnterior;
+            unidadActual = unidadAnterior;
+            bloqueActual = bloqueAnterior;
         }
     }
 

@@ -59,7 +59,7 @@ public class Interfaz extends Entidad {
         ts.setInterfazActual(this);
         try {
             if (ancestro != null) {
-                ancestro.esValidoEn(ts, parametroGenerico);
+                ancestro.esValidoEnHerencia(ts, parametroGenerico);
                 Entidad entidadAncestro = ts.getTipo(ancestro.getNombreReferencia());
                 if (!(entidadAncestro instanceof Interfaz)) {
                     errorEn(ancestro.getToken(),

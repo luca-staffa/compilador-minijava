@@ -1,12 +1,19 @@
-# Etapa 3 - Analizador Semántico (Chequeo de Declaraciones) de MiniJava
+# Etapas 1 a 4 - Compilador de MiniJava
 
 Compilador de MiniJava con Analizador Léxico (Etapa 1), Analizador Sintáctico
-Descendente Recursivo (Etapa 2) y Análisis Semántico de Declaraciones (Etapa 3),
-implementado sin herramientas de build.
+Descendente Recursivo (Etapa 2), Análisis Semántico de Declaraciones (Etapa 3) y
+Análisis Semántico de Sentencias con ASTs (Etapa 4), implementado sin
+herramientas de build.
 
 La Etapa 3 extiende al analizador sintáctico para que **construya la Tabla de
 Símbolos** a medida que reconoce las declaraciones, y agrega una segunda pasada
 de **chequeo de declaraciones** y la **consolidación** de clases e interfaces.
+
+La Etapa 4 extiende al analizador sintáctico para que **construya los AST** de
+los cuerpos de métodos y constructores y los asocie a la Tabla de Símbolos, y
+agrega el **chequeo de sentencias**: resolución de nombres, chequeo de tipos,
+información estructural, ámbitos locales y contexto estático. El detalle fase
+por fase está en `Etapa4_Base.md`.
 
 ## Requisitos
 
@@ -29,6 +36,7 @@ javac -d build/classes \
   src/main/java/analizadorlexico/*.java \
   src/main/java/analizadorsintactico/*.java \
   src/main/java/analizadorsemantico/*.java \
+  src/main/java/analizadorsemantico/ast/*.java \
   src/main/java/sourcemanager/*.java
 jar cfe Compilador.jar moduloprincipal.ModuloPrincipal -C build/classes .
 ```
@@ -76,6 +84,10 @@ número de línea (formato `///[Error:lexema|nroLinea]`, igual que en la Etapa 2
   - `Tipo` (abstracta): `TipoPrimitivo`, `TipoVoid`, `TipoParametro`,
     `TipoArreglo`, `TipoReferencia`.
   - `ExcepcionSemantica`: error semántico con lexema, línea y mensaje.
+  - `Unidad`, `VariableLocal`, `Bloque`, `InfoCheck`, `SemanticaUtil`,
+    `TipoNull`: soporte del chequeo de sentencias (Etapa 4).
+- `analizadorsemantico.ast`: nodos del AST (expresiones, encadenados y
+  sentencias) con sus métodos de chequeo.
 - `analizadorlexico.*` y `sourcemanager.*`: módulos de las etapas anteriores.
 
 ## Chequeo de declaraciones

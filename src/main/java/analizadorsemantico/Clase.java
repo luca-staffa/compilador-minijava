@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
@@ -19,6 +20,9 @@ public class Clase extends Entidad {
     private final Map<String, Atributo> atributos = new LinkedHashMap<>();
     private final Map<String, Metodo> metodos = new LinkedHashMap<>();
     private final Map<Integer, Constructor> constructores = new LinkedHashMap<>();
+
+    /** Unidades declaradas en esta clase (no las heredadas por consolidacion). */
+    private final List<Unidad> unidadesPropias = new ArrayList<>();
 
     private boolean consolidada;
 
@@ -65,6 +69,10 @@ public class Clase extends Entidad {
         return constructores;
     }
 
+    public List<Unidad> getUnidadesPropias() {
+        return unidadesPropias;
+    }
+
     public boolean estaConsolidada() {
         return consolidada;
     }
@@ -88,6 +96,7 @@ public class Clase extends Entidad {
                             + " parametro(s) ya fue declarado en la clase " + nombre);
         }
         metodos.put(metodo.getClave(), metodo);
+        unidadesPropias.add(metodo);
     }
 
     public void agregarConstructor(Constructor constructor) {
@@ -102,11 +111,14 @@ public class Clase extends Entidad {
                             + " parametro(s) ya fue declarado");
         }
         constructores.put(constructor.getAridad(), constructor);
+        unidadesPropias.add(constructor);
     }
 
     public void agregarConstructorPorDefecto() {
         if (constructores.isEmpty()) {
-            constructores.put(0, new Constructor(token, new ArrayList<>(), ts));
+            Constructor constructor = new Constructor(token, new ArrayList<>(), ts);
+            constructores.put(0, constructor);
+            unidadesPropias.add(constructor);
         }
     }
 
@@ -140,7 +152,7 @@ public class Clase extends Entidad {
         if (ancestro == null) {
             return;
         }
-        ancestro.esValidoEn(ts, parametroGenerico);
+        ancestro.esValidoEnHerencia(ts, parametroGenerico);
         Entidad entidadAncestro = ts.getTipo(ancestro.getNombreReferencia());
         if (ancestroEsInterfaz && !(entidadAncestro instanceof Interfaz)) {
             errorEn(ancestro.getToken(),

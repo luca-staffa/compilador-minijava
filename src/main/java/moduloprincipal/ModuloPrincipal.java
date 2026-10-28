@@ -31,6 +31,7 @@ public class ModuloPrincipal {
 
             tablaDeSimbolos.estaBienDeclarada();
             tablaDeSimbolos.consolidar();
+            tablaDeSimbolos.chequearCuerpos();
 
             System.out.println("Compilacion Exitosa");
             System.out.println("[SinErrores]");
