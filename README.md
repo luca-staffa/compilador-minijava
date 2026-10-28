@@ -36,7 +36,7 @@ jar cfe Compilador.jar moduloprincipal.ModuloPrincipal -C build/classes .
 ## Ejecución
 
 ```
-java -jar Compilador.jar resources/sinErrores/semCorrecto01.java
+java -jar Compilador.jar resources/sinErrores/semIICorrecto01.java
 ```
 
 Acepta como parámetro la ruta del archivo fuente MiniJava, con cualquier extensión.

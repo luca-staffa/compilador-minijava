@@ -4,99 +4,79 @@ import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.PrintStream;
 import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
 
 import moduloprincipal.ModuloPrincipal;
-
 import org.hamcrest.CoreMatchers;
 import org.junit.After;
-import org.junit.Before;
 import org.junit.Test;
+import org.junit.Before;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
+import org.junit.runners.Parameterized.Parameters;
 
 import static org.hamcrest.MatcherAssert.assertThat;
+
 
 @RunWith(Parameterized.class)
 public class TesterDeCasosSinErrores {
 
-    private static final String MSG_EXITO = "[SinErrores]";
-    private static final String TEST_FILES_DIRECTORY_PATH = "resources/sinErrores/";
+    private static final String msgExito = "[SinErrores]";
+    private static final String testFilesDirectoryPath = "resources/sinErrores/";
 
     // Clase que declara el main del compilador. No es necesario instanciarla.
     private static final ModuloPrincipal init = null;
 
     private final ByteArrayOutputStream outContent = new ByteArrayOutputStream();
     private final PrintStream originalOut = System.out;
+    private boolean fullCompilerOuputPrintingInEachTest = false;
 
-    // Cambiar a true para ver la salida del compilador durante la ejecucion de los tests.
-    private final boolean fullCompilerOutputPrintingInEachTest = false;
-
-    private final String input;
-
-    public TesterDeCasosSinErrores(String input) {
-        this.input = input;
-    }
 
     @Before
-    public void setUp() {
-        outContent.reset();
+    public  void setUpClass() {
         System.setOut(new PrintStream(outContent));
     }
 
     @After
-    public void tearDown() {
+    public  void tearDownClass() {
         System.setOut(originalOut);
     }
 
-    @Parameterized.Parameters(name = "{0}")
-    public static Iterable<String> data() {
-        File folder = new File(TEST_FILES_DIRECTORY_PATH);
-        File[] files = folder.listFiles();
-
-        if (files == null) {
-            throw new RuntimeException(
-                    "No se pudo leer el directorio de casos de prueba: "
-                            + TEST_FILES_DIRECTORY_PATH
-            );
+    @Parameters(name = "{0}")
+    public static Iterable<? extends Object> data() {
+        File folder = new File(testFilesDirectoryPath);
+        ArrayList<String> names = new ArrayList();
+        for(File f: folder.listFiles()){
+            names.add(f.getName());
         }
-
-        List<String> names = new ArrayList<>();
-
-        for (File file : files) {
-            if (file.isFile()) {
-                names.add(file.getName());
-            }
-        }
-
-        Collections.sort(names);
+        names.sort(String::compareTo);
         return names;
+
     }
+
+    private String input;
+
+    public TesterDeCasosSinErrores(String input){
+        this.input = input;
+    }
+
 
     @Test
     public void testIterado() {
         probarExito(input);
     }
 
-    private void probarExito(String name) {
-        String path = TEST_FILES_DIRECTORY_PATH + name;
 
-        init.main(new String[] { path });
+    void probarExito(String name){
+            String path = testFilesDirectoryPath+name;
+            String[] args = {path};
+            init.main(args);
 
-        String salida = outContent.toString();
+            if(fullCompilerOuputPrintingInEachTest){
+                System.setOut(originalOut);
+                System.out.println(outContent.toString());
+            }
 
-        if (fullCompilerOutputPrintingInEachTest) {
-            originalOut.println("----- Salida de " + path + " -----");
-            originalOut.print(salida);
-            originalOut.println("--------------------------------");
-        }
+            assertThat("Mensaje Incorrecto en: " + path,  outContent.toString(), CoreMatchers.containsString(msgExito));
 
-        assertThat(
-                "No se informo analisis exitoso en: " + path
-                        + "\nSalida obtenida:\n" + salida,
-                salida,
-                CoreMatchers.containsString(MSG_EXITO)
-        );
     }
 }
