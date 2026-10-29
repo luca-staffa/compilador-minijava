@@ -40,4 +40,17 @@ public class NodoReferencia extends NodoExpresion {
         }
         return info;
     }
+
+    @Override
+    public Token getTokenValor() {
+        return encadenado != null ? encadenado.getToken() : primario.getTokenValor();
+    }
+
+    @Override
+    public Token getTokenSentencia() {
+        if (primario instanceof NodoExpresionParentizada) {
+            return primario.getToken();
+        }
+        return encadenado != null ? encadenado.getToken() : primario.getTokenSentencia();
+    }
 }

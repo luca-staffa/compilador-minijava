@@ -17,12 +17,14 @@ import analizadorsemantico.TipoReferencia;
 public class NodoEncadenadoLlamada extends NodoEncadenado {
 
     private final String nombre;
+    private final Token tokenNombre;
     private final List<NodoExpresion> argumentos;
 
-    public NodoEncadenadoLlamada(Token token, List<NodoExpresion> argumentos,
+    public NodoEncadenadoLlamada(Token tokenPunto, Token tokenNombre, List<NodoExpresion> argumentos,
                                  NodoEncadenado siguiente) {
-        super(token, siguiente);
-        this.nombre = token.getLexema();
+        super(tokenPunto, siguiente);
+        this.tokenNombre = tokenNombre;
+        this.nombre = tokenNombre.getLexema();
         this.argumentos = argumentos;
     }
 
@@ -42,6 +44,11 @@ public class NodoEncadenadoLlamada extends NodoEncadenado {
                         + " no esta declarado");
             }
             Metodo metodo = SemanticaUtil.buscarMetodo(entidad, nombre, argumentos.size());
+            if (metodo == null && entidad instanceof analizadorsemantico.Interfaz) {
+                // Las interfaces ofrecen los metodos de instancia de Object (toString),
+                // pero no sus metodos estaticos ni los de la clase que las implementa.
+                metodo = metodoDeObject(ts, nombre, argumentos.size());
+            }
             if (metodo == null) {
                 errorEn(token, "el metodo " + nombre + " con " + argumentos.size()
                         + " parametro(s) no existe en " + referencia.getNombreReferencia());
@@ -49,7 +56,7 @@ public class NodoEncadenadoLlamada extends NodoEncadenado {
             Map<String, Tipo> sustitucion = SemanticaUtil.sustitucionVista(entidad, referencia);
             Metodo vista = metodo.instanciar(sustitucion);
             NodoExpresion.chequearArgumentos(ts, vista.getParametros(), argumentos,
-                    token, "el metodo " + nombre);
+                    tokenNombre, "el metodo " + nombre);
             tipoRetorno = vista.getTipoRetorno();
         } else {
             errorEn(token, "no se puede invocar el metodo " + nombre
@@ -61,5 +68,16 @@ public class NodoEncadenadoLlamada extends NodoEncadenado {
             return siguiente.chequear(ts, tipoRetorno);
         }
         return InfoCheck.llamada(tipoRetorno);
+    }
+
+    /** Metodo de instancia de Object con esa clave, o null. */
+    private static Metodo metodoDeObject(TablaDeSimbolos ts, String nombre, int aridad) {
+        Entidad object = ts.getTipo("Object");
+        if (!(object instanceof analizadorsemantico.Clase)) {
+            return null;
+        }
+        Metodo metodo =
+                ((analizadorsemantico.Clase) object).getMetodos().get(nombre + "/" + aridad);
+        return metodo != null && !metodo.esEstatico() ? metodo : null;
     }
 }

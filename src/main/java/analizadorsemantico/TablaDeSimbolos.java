@@ -195,18 +195,22 @@ public class TablaDeSimbolos {
 
     private void inicializarPredefinidas() {
         Clase object = new Clase(tokenClase("Object"), this);
+        object.agregarMetodo(metodoEstatico("debugPrint", tipoVoid(), tipoInt()));
         object.agregarMetodo(new Metodo(
                 tokenId("toString"),
                 new TipoReferencia("String", null, null),
                 new ArrayList<>(),
                 false,
                 this));
+        object.agregarConstructorPorDefecto();
         insertarPredefinida(object);
 
-        insertarPredefinida(new Clase(tokenClase("String"), this));
+        Clase string = new Clase(tokenClase("String"), this);
+        string.agregarConstructorPorDefecto();
+        insertarPredefinida(string);
 
         Clase system = new Clase(tokenClase("System"), this);
-        system.agregarMetodo(metodoEstatico("debugPrint", tipoVoid(), tipoInt()));
+        system.setAncestro(new TipoReferencia("Object", null, tokenClase("Object")), false);
         system.agregarMetodo(metodoEstatico("read", tipoInt()));
         system.agregarMetodo(metodoEstatico("printB", tipoVoid(), tipoBoolean()));
         system.agregarMetodo(metodoEstatico("printC", tipoVoid(), tipoChar()));

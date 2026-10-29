@@ -72,8 +72,29 @@ public class Interfaz extends Entidad {
                 metodo.estaBienDeclarada();
             }
             verificarRedefiniciones();
+            verificarContraObject();
         } finally {
             ts.setInterfazActual(null);
+        }
+    }
+
+    /**
+     * Una interfaz no puede declarar un metodo con la misma clave que un metodo
+     * de instancia de Object (por ejemplo toString) con signatura distinta.
+     */
+    private void verificarContraObject() {
+        Entidad object = ts.getTipo("Object");
+        if (!(object instanceof Clase)) {
+            return;
+        }
+        Map<String, Metodo> metodosObject = ((Clase) object).getMetodos();
+        for (Metodo metodo : metodos.values()) {
+            Metodo deObject = metodosObject.get(metodo.getClave());
+            if (deObject != null && !deObject.esEstatico() && !metodo.mismaSignatura(deObject)) {
+                errorEn(metodo.getToken(),
+                        "el metodo " + metodo.getNombre() + " de la interfaz " + nombre
+                                + " no redefine correctamente al metodo de Object");
+            }
         }
     }
 
@@ -121,7 +142,7 @@ public class Interfaz extends Entidad {
                     nuevaSustitucion.put(parametro,
                             argumento != null
                                     ? argumento.sustituir(sustitucion)
-                                    : new TipoParametro(parametro, interfazAncestro.ancestro.getToken()));
+                                    : new TipoParametro(parametro, siguiente, interfazAncestro.ancestro.getToken()));
                 }
                 sustitucion = nuevaSustitucion;
                 actual = siguiente;
@@ -185,7 +206,7 @@ public class Interfaz extends Entidad {
                     sustitucionAncestro.put(parametro,
                             argumento != null
                                     ? argumento.sustituir(sustitucion)
-                                    : new TipoParametro(parametro, ancestro.getToken()));
+                                    : new TipoParametro(parametro, interfazAncestro, ancestro.getToken()));
                 }
                 for (Map.Entry<String, Metodo> entrada
                         : interfazAncestro.getMetodosInstanciados(sustitucionAncestro).entrySet()) {
@@ -204,7 +225,7 @@ public class Interfaz extends Entidad {
             sustitucion.put(parametro,
                     argumento != null
                             ? argumento
-                            : new TipoParametro(parametro, referencia.getToken()));
+                            : new TipoParametro(parametro, ancestro, referencia.getToken()));
         }
         return sustitucion;
     }

@@ -1,20 +1,31 @@
 package analizadorsemantico;
 
 import java.util.Map;
+import java.util.Objects;
 
 import analizadorlexico.Token;
 
-/** Uso de un parametro de tipo generico (por ejemplo T). */
+/**
+ * Uso de un parametro de tipo generico (por ejemplo T). Conserva, ademas del
+ * nombre, la entidad que lo declaro: dos parametros que comparten letra pero
+ * provienen de declaraciones distintas son tipos distintos (Seccion 5).
+ */
 public class TipoParametro extends Tipo {
     private final String nombre;
+    private final Entidad origen;
 
-    public TipoParametro(String nombre, Token token) {
+    public TipoParametro(String nombre, Entidad origen, Token token) {
         super(token);
         this.nombre = nombre;
+        this.origen = origen;
     }
 
     public String getNombreParametro() {
         return nombre;
+    }
+
+    public Entidad getOrigen() {
+        return origen;
     }
 
     @Override
@@ -37,7 +48,12 @@ public class TipoParametro extends Tipo {
 
     @Override
     public boolean esIgualA(Tipo otro) {
-        return otro instanceof TipoParametro && ((TipoParametro) otro).nombre.equals(nombre);
+        if (!(otro instanceof TipoParametro)) {
+            return false;
+        }
+        TipoParametro parametro = (TipoParametro) otro;
+        return parametro.nombre.equals(nombre)
+                && Objects.equals(parametro.origen, origen);
     }
 
     @Override

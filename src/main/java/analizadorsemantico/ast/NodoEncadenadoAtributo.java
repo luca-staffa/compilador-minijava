@@ -19,9 +19,9 @@ public class NodoEncadenadoAtributo extends NodoEncadenado {
 
     private final String nombre;
 
-    public NodoEncadenadoAtributo(Token token, NodoEncadenado siguiente) {
-        super(token, siguiente);
-        this.nombre = token.getLexema();
+    public NodoEncadenadoAtributo(Token tokenPunto, Token tokenNombre, NodoEncadenado siguiente) {
+        super(tokenPunto, siguiente);
+        this.nombre = tokenNombre.getLexema();
     }
 
     @Override

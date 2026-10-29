@@ -23,7 +23,8 @@ public class NodoReturn extends NodoSentencia {
     public void chequear(TablaDeSimbolos ts) {
         if (ts.getUnidadActual() instanceof Constructor) {
             if (expresion != null) {
-                error("un constructor no puede retornar una expresion");
+                errorEn(expresion.getTokenValor(),
+                        "un constructor no puede retornar una expresion");
             }
             return;
         }
@@ -34,7 +35,8 @@ public class NodoReturn extends NodoSentencia {
         Tipo tipoRetorno = metodo.getTipoRetorno();
         if (tipoRetorno instanceof TipoVoid) {
             if (expresion != null) {
-                error("un metodo void solo admite return; sin expresion");
+                errorEn(expresion.getTokenValor(),
+                        "un metodo void solo admite return; sin expresion");
             }
             return;
         }
@@ -44,7 +46,7 @@ public class NodoReturn extends NodoSentencia {
         }
         InfoCheck info = expresion.chequear(ts);
         if (!SemanticaUtil.conforma(info.getTipo(), tipoRetorno, ts)) {
-            error("el tipo " + info.getTipo().getNombre()
+            errorEn(expresion.getTokenValor(), "el tipo " + info.getTipo().getNombre()
                     + " no conforma con el tipo de retorno "
                     + tipoRetorno.getNombre());
         }

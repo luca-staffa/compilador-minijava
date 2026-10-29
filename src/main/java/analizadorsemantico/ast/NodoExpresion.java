@@ -30,6 +30,24 @@ public abstract class NodoExpresion {
         return token;
     }
 
+    /**
+     * Token que representa el valor de la expresion cuando se la usa en un
+     * contexto que exige un tipo (condicion, return, argumento). Por defecto es
+     * el token propio; las llamadas usan el parentesis y los parentizados, su
+     * contenido.
+     */
+    public Token getTokenValor() {
+        return token;
+    }
+
+    /**
+     * Token que se senala cuando la expresion no es admisible como sentencia.
+     * Por defecto es el token propio; las referencias usan el ultimo eslabon.
+     */
+    public Token getTokenSentencia() {
+        return token;
+    }
+
     public abstract InfoCheck chequear(TablaDeSimbolos ts);
 
     protected void error(String mensaje) {

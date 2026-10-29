@@ -9,15 +9,22 @@ import analizadorsemantico.Metodo;
 import analizadorsemantico.SemanticaUtil;
 import analizadorsemantico.TablaDeSimbolos;
 
-/** Llamada a un metodo sin receptor explicito. */
+/**
+ * Llamada a un metodo sin receptor explicito. Los errores de resolucion se
+ * reportan sobre el nombre del metodo; el parentesis de los argumentos es el
+ * token de valor (el que se senala cuando la llamada aparece en un contexto que
+ * exige un tipo, como una condicion o un return).
+ */
 public class NodoLlamada extends NodoExpresion {
 
     private final String nombre;
+    private final Token tokenParA;
     private final List<NodoExpresion> argumentos;
 
-    public NodoLlamada(Token token, List<NodoExpresion> argumentos) {
-        super(token);
-        this.nombre = token.getLexema();
+    public NodoLlamada(Token tokenNombre, Token tokenParA, List<NodoExpresion> argumentos) {
+        super(tokenNombre);
+        this.nombre = tokenNombre.getLexema();
+        this.tokenParA = tokenParA;
         this.argumentos = argumentos;
     }
 
@@ -27,6 +34,11 @@ public class NodoLlamada extends NodoExpresion {
 
     public List<NodoExpresion> getArgumentos() {
         return argumentos;
+    }
+
+    @Override
+    public Token getTokenValor() {
+        return tokenParA != null ? tokenParA : token;
     }
 
     @Override

@@ -110,7 +110,9 @@ public final class SemanticaUtil {
         }
         Entidad entidad = ts.getTipo(ancestro.getNombreReferencia());
         String parametro = entidad == null ? null : entidad.getParametroGenerico();
-        Tipo argumento = parametro == null ? null : new TipoParametro(parametro, ancestro.getToken());
+        Tipo argumento = parametro == null
+                ? null
+                : new TipoParametro(parametro, entidad, ancestro.getToken());
         return new TipoReferencia(ancestro.getNombreReferencia(), argumento, ancestro.getToken());
     }
 
@@ -125,7 +127,7 @@ public final class SemanticaUtil {
         if (parametro != null) {
             Tipo argumento = receptor.getArgumento();
             sustitucion.put(parametro,
-                    argumento != null ? argumento : new TipoParametro(parametro, receptor.getToken()));
+                    argumento != null ? argumento : new TipoParametro(parametro, entidad, receptor.getToken()));
         }
         return sustitucion;
     }
@@ -166,7 +168,7 @@ public final class SemanticaUtil {
         String parametro = clase.getParametroGenerico();
         Tipo argumento = parametro == null
                 ? null
-                : new TipoParametro(parametro, clase.getToken());
+                : new TipoParametro(parametro, clase, clase.getToken());
         return new TipoReferencia(clase.getNombre(), argumento, clase.getToken());
     }
 
@@ -196,19 +198,41 @@ public final class SemanticaUtil {
         try {
             tipo.esValidoEn(ts, parametroDeContexto(ts));
         } catch (ExcepcionSemantica e) {
+            // Se conserva el token de la ocurrencia concreta que origino el error
+            // (por ejemplo el argumento de tipo Nada), con tokenDelError de respaldo.
+            if (e.getLexema() != null) {
+                throw new ExcepcionSemantica(e.getLexema(), e.getNroLinea(), e.getMessage());
+            }
             throw new ExcepcionSemantica(
                     tokenDelError.getLexema(), tokenDelError.getNroLinea(), e.getMessage());
         }
         if (esContextoEstatico(ts)) {
             String parametro = parametroDeContexto(ts);
             if (parametro != null && contieneParametro(tipo, parametro)) {
+                Token tokenParametro = tokenDeParametro(tipo, parametro);
+                Token tokenFinal = tokenParametro != null ? tokenParametro : tokenDelError;
                 throw new ExcepcionSemantica(
-                        tokenDelError.getLexema(),
-                        tokenDelError.getNroLinea(),
+                        tokenFinal.getLexema(),
+                        tokenFinal.getNroLinea(),
                         "no se puede usar el parametro de tipo " + parametro
                                 + " en un contexto estatico");
             }
         }
+    }
+
+    /** Token de la primera aparicion del parametro indicado en el tipo, o null. */
+    private static Token tokenDeParametro(Tipo tipo, String nombre) {
+        if (tipo instanceof TipoParametro) {
+            TipoParametro parametro = (TipoParametro) tipo;
+            return parametro.getNombreParametro().equals(nombre) ? parametro.getToken() : null;
+        }
+        if (tipo instanceof TipoArreglo) {
+            return tokenDeParametro(((TipoArreglo) tipo).getBase(), nombre);
+        }
+        if (tipo instanceof TipoReferencia) {
+            return tokenDeParametro(((TipoReferencia) tipo).getArgumento(), nombre);
+        }
+        return null;
     }
 
     public static String parametroDeContexto(TablaDeSimbolos ts) {

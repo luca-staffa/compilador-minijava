@@ -15,14 +15,21 @@ import analizadorsemantico.TablaDeSimbolos;
 import analizadorsemantico.Tipo;
 import analizadorsemantico.TipoReferencia;
 
-/** Creacion de objetos mediante un constructor. */
+/**
+ * Creacion de objetos mediante un constructor. El token base es la palabra
+ * reservada {@code new}; el token del tipo se conserva aparte para los errores
+ * que apuntan al tipo (tipo inexistente o uso invalido de genericidad).
+ */
 public class NodoNewObjeto extends NodoExpresion {
 
+    private final Token tokenTipo;
     private final TipoReferencia tipo;
     private final List<NodoExpresion> argumentos;
 
-    public NodoNewObjeto(Token token, TipoReferencia tipo, List<NodoExpresion> argumentos) {
-        super(token);
+    public NodoNewObjeto(Token tokenNew, Token tokenTipo, TipoReferencia tipo,
+                         List<NodoExpresion> argumentos) {
+        super(tokenNew);
+        this.tokenTipo = tokenTipo;
         this.tipo = tipo;
         this.argumentos = argumentos;
     }
@@ -30,16 +37,20 @@ public class NodoNewObjeto extends NodoExpresion {
     @Override
     public InfoCheck chequear(TablaDeSimbolos ts) {
         Entidad entidad = ts.getTipo(tipo.getNombreReferencia());
+        if (entidad == null) {
+            errorEn(tokenTipo, "no se puede instanciar " + tipo.getNombreReferencia()
+                    + " porque no es una clase");
+        }
         if (!(entidad instanceof Clase)) {
-            error("no se puede instanciar " + tipo.getNombreReferencia()
+            errorEn(token, "no se puede instanciar " + tipo.getNombreReferencia()
                     + " porque no es una clase");
         }
         if (!tipo.esDiamante()) {
-            SemanticaUtil.validarTipo(tipo, ts, token);
+            SemanticaUtil.validarTipo(tipo, ts, tokenTipo);
         }
         Clase clase = (Clase) entidad;
         if (clase.getParametroGenerico() != null && tipo.getArgumento() == null) {
-            error("el tipo " + clase.getNombre()
+            errorEn(tokenTipo, "el tipo " + clase.getNombre()
                     + " es generico y requiere un argumento de tipo");
         }
 

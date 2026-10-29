@@ -30,7 +30,7 @@ public class NodoSentenciaExpresion extends NodoSentencia {
         if (info.esLlamada()) {
             return;
         }
-        errorEn(expresion.getToken(),
+        errorEn(expresion.getTokenSentencia(),
                 "la expresion no es una asignacion ni una llamada valida como sentencia");
     }
 }

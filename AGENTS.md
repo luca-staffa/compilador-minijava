@@ -14,9 +14,15 @@ MiniJava compiler (UNS Compiladores, Etapa 4). Work happens in
   `../md/MiniJava-Semantica-Completa-2026/MiniJava-Semantica-Completa-2026.md`
   (both Spanish). `Etapa4_Base.md` documents the Etapa 4 base phase by phase;
   the README lists compile/run and the module structure.
-- `./CorrerTests.sh` reports `OK (15 tests)`: 5 `sinErrores` (fleet + 2 added),
-  5 base `conErrores` (`semIIError01..05`) and 3 added regression `conErrores`
-  (`semIIError06..08`).
+- `./CorrerTests.sh` reports `OK (404 tests)`: the 15 tracked fixtures plus the
+  `TAMBIENBORRAR_*.txt` battery (new course convention). The old `BORRAR_*.txt`
+  staging duplicates (137 files, CN-SII convention with contradictory error
+  tokens) were moved to `tests_descartados/` so the testers no longer discover
+  them; `semIIError07` was updated to the new convention (`[Error:true|5]`).
+- Error-token convention (new suite): `new` for creation errors, `.`/`[` for
+  selector/index errors, the offending subexpression for index/size/return/
+  condition type errors, and the method name for implicit-call resolution.
+  `NodoExpresion.getTokenValor()` / `getTokenSentencia()` route these.
 - Etapa 4 deliverable also needs a report (compile/run instructions, AST class
   diagram, logros attempted); `Informe_etapa1-3.*` cover earlier stages only.
 

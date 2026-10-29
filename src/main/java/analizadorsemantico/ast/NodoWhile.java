@@ -20,7 +20,7 @@ public class NodoWhile extends NodoSentencia {
     public void chequear(TablaDeSimbolos ts) {
         InfoCheck info = condicion.chequear(ts);
         if (!NodoExpresion.esBoolean(info.getTipo())) {
-            errorEn(condicion.getToken(), "la condicion del while debe ser de tipo boolean");
+            errorEn(condicion.getTokenValor(), "la condicion del while debe ser de tipo boolean");
         }
         if (cuerpo instanceof NodoVarLocal) {
             errorEn(((NodoVarLocal) cuerpo).getTokenNombre(),

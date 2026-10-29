@@ -26,4 +26,9 @@ public class NodoExpresionParentizada extends NodoExpresion {
         InfoCheck info = expresion.chequear(ts);
         return InfoCheck.valor(info.getTipo());
     }
+
+    @Override
+    public analizadorlexico.Token getTokenValor() {
+        return expresion.getTokenValor();
+    }
 }

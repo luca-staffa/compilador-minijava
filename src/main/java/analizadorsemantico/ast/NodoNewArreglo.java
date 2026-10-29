@@ -11,27 +11,33 @@ import analizadorsemantico.Tipo;
 import analizadorsemantico.TipoArreglo;
 import analizadorsemantico.TipoReferencia;
 
-/** Creacion de arreglos con una o mas dimensiones. */
+/**
+ * Creacion de arreglos con una o mas dimensiones. El token base es la palabra
+ * reservada {@code new}; el token del tipo base se conserva aparte.
+ */
 public class NodoNewArreglo extends NodoExpresion {
 
+    private final Token tokenTipo;
     private final Tipo tipoBase;
     private final List<NodoExpresion> tamanios;
 
-    public NodoNewArreglo(Token token, Tipo tipoBase, List<NodoExpresion> tamanios) {
-        super(token);
+    public NodoNewArreglo(Token tokenNew, Token tokenTipo, Tipo tipoBase,
+                          List<NodoExpresion> tamanios) {
+        super(tokenNew);
+        this.tokenTipo = tokenTipo;
         this.tipoBase = tipoBase;
         this.tamanios = tamanios;
     }
 
     @Override
     public InfoCheck chequear(TablaDeSimbolos ts) {
-        SemanticaUtil.validarTipo(tipoBase, ts, token);
+        SemanticaUtil.validarTipo(tipoBase, ts, tokenTipo);
         if (tipoBase instanceof TipoReferencia) {
             TipoReferencia referencia = (TipoReferencia) tipoBase;
             Entidad entidad = ts.getTipo(referencia.getNombreReferencia());
             if (entidad != null && entidad.getParametroGenerico() != null
                     && referencia.getArgumento() == null) {
-                error("el tipo " + referencia.getNombreReferencia()
+                errorEn(tokenTipo, "el tipo " + referencia.getNombreReferencia()
                         + " es generico y requiere un argumento de tipo");
             }
         }
@@ -41,6 +47,6 @@ public class NodoNewArreglo extends NodoExpresion {
                 errorEn(tamanio.getToken(), "el tamanio de una dimension debe ser int");
             }
         }
-        return InfoCheck.valor(new TipoArreglo(tipoBase, tamanios.size(), token));
+        return InfoCheck.valor(new TipoArreglo(tipoBase, tamanios.size(), tokenTipo));
     }
 }

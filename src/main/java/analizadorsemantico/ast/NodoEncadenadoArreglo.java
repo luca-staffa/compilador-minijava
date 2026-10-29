@@ -11,8 +11,9 @@ public class NodoEncadenadoArreglo extends NodoEncadenado {
 
     private final NodoExpresion indice;
 
-    public NodoEncadenadoArreglo(NodoExpresion indice, NodoEncadenado siguiente) {
-        super(indice.getToken(), siguiente);
+    public NodoEncadenadoArreglo(Token tokenCorchete, NodoExpresion indice,
+                                 NodoEncadenado siguiente) {
+        super(tokenCorchete, siguiente);
         this.indice = indice;
     }
 

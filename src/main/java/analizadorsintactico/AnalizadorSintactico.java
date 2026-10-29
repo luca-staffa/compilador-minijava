@@ -376,7 +376,7 @@ public class AnalizadorSintactico {
             metodoOAtributo(conDimensiones(tipoBase, dimensiones, tokenTipo), tokenNombre);
         } else if (actualEn(Set.of("idGen"))) {
             Token tokenTipo = consumir("idGen");
-            TipoParametro tipoBase = new TipoParametro(tokenTipo.getLexema(), tokenTipo);
+            TipoParametro tipoBase = new TipoParametro(tokenTipo.getLexema(), entidadActual(), tokenTipo);
             int dimensiones = dimensionesOpcionales();
             Token tokenNombre = consumir("idMV");
             metodoOAtributo(conDimensiones(tipoBase, dimensiones, tokenTipo), tokenNombre);
@@ -473,6 +473,13 @@ public class AnalizadorSintactico {
         tablaDeSimbolos.setMetodoActual(metodo);
     }
 
+    /** Entidad cuya declaracion esta siendo analizada (para el origen de T). */
+    private Entidad entidadActual() {
+        return tablaDeSimbolos.getClaseActual() != null
+                ? tablaDeSimbolos.getClaseActual()
+                : tablaDeSimbolos.getInterfazActual();
+    }
+
     // <TipoMetodo> ::= <Tipo> | void
     private Tipo tipoMetodo() throws IOException {
         if (actualEn(Set.of("pr_void"))) {
@@ -505,7 +512,7 @@ public class AnalizadorSintactico {
             return tipoReferencia();
         } else if (actualEn(Set.of("idGen"))) {
             Token tokenParametro = consumir("idGen");
-            return new TipoParametro(tokenParametro.getLexema(), tokenParametro);
+            return new TipoParametro(tokenParametro.getLexema(), entidadActual(), tokenParametro);
         } else {
             throw error("un tipo (primitivo, clase o parametro generico)");
         }
@@ -545,7 +552,7 @@ public class AnalizadorSintactico {
                         "el operador diamante <> solo puede usarse al instanciar una clase generica, y "
                                 + tokenIdClase.getLexema() + " no es generica");
             }
-            Tipo argumento = new TipoParametro(entidad.getParametroGenerico(), tokenIdClase);
+            Tipo argumento = new TipoParametro(entidad.getParametroGenerico(), entidad, tokenIdClase);
             TipoReferencia referencia =
                     new TipoReferencia(tokenIdClase.getLexema(), argumento, tokenIdClase);
             referencia.marcarDiamante();
@@ -588,7 +595,7 @@ public class AnalizadorSintactico {
     private Tipo instanciadoOParametrico() throws IOException {
         if (actualEn(Set.of("idGen"))) {
             Token tokenParametro = consumir("idGen");
-            return new TipoParametro(tokenParametro.getLexema(), tokenParametro);
+            return new TipoParametro(tokenParametro.getLexema(), entidadActual(), tokenParametro);
         } else if (actualEn(Set.of("idClase"))) {
             Token tokenIdClase = consumir("idClase");
             Tipo argumento = tipoGenericoOpcional();
@@ -857,18 +864,20 @@ public class AnalizadorSintactico {
     //            | epsilon
     private NodoEncadenado rResto() throws IOException {
         if (actualEn(Set.of("punto"))) {
-            match("punto");
+            Token tokenPunto = consumir("punto");
             Token tokenNombre = consumir("idMV");
             List<NodoExpresion> argumentos = metodoOVar();
             NodoEncadenado siguiente = rResto();
             if (argumentos == null) {
-                return new NodoEncadenadoAtributo(tokenNombre, siguiente);
+                return new NodoEncadenadoAtributo(tokenPunto, tokenNombre, siguiente);
             }
-            return new NodoEncadenadoLlamada(tokenNombre, argumentos, siguiente);
+            return new NodoEncadenadoLlamada(tokenPunto, tokenNombre, argumentos, siguiente);
         } else if (actualEn(Set.of("corcheteA"))) {
-            NodoExpresion indice = accesoArreglo();
+            Token tokenCorchete = consumir("corcheteA");
+            NodoExpresion indice = expresion();
+            match("corcheteC");
             NodoEncadenado siguiente = rResto();
-            return new NodoEncadenadoArreglo(indice, siguiente);
+            return new NodoEncadenadoArreglo(tokenCorchete, indice, siguiente);
         }
         return null;
     }
@@ -888,14 +897,15 @@ public class AnalizadorSintactico {
             return new NodoLiteral(tokenString, new TipoReferencia("String", null, tokenString));
         } else if (actualEn(Set.of("idMV"))) {
             Token tokenNombre = consumir("idMV");
+            Token tokenParA = actualEn(Set.of("parA")) ? tokenActual : null;
             List<NodoExpresion> argumentos = metodoOVar();
             if (argumentos == null) {
                 return new NodoVar(tokenNombre);
             }
-            return new NodoLlamada(tokenNombre, argumentos);
+            return new NodoLlamada(tokenNombre, tokenParA, argumentos);
         } else if (actualEn(Set.of("pr_new"))) {
-            match("pr_new");
-            return arregloOConstructor();
+            Token tokenNew = consumir("pr_new");
+            return arregloOConstructor(tokenNew);
         } else if (actualEn(Set.of("idClase"))) {
             return llamadaMetodoEstatico();
         } else if (actualEn(Set.of("parA"))) {
@@ -908,26 +918,26 @@ public class AnalizadorSintactico {
     // <ArregloOConstructor> ::= <TipoReferenciaInstanciacion> <AOC2>
     //                         | <TipoPrimitivo> <DimensionesConTamanio>
     //                         | idGen <DimensionesConTamanio>
-    private NodoExpresion arregloOConstructor() throws IOException {
+    private NodoExpresion arregloOConstructor(Token tokenNew) throws IOException {
         if (actualEn(Set.of("idClase"))) {
             Token tokenIdClase = consumir("idClase");
             TipoReferencia tipo = tipoReferenciaNueva(tokenIdClase);
             if (actualEn(Set.of("parA"))) {
                 List<NodoExpresion> argumentos = argsActuales();
-                return new NodoNewObjeto(tokenIdClase, tipo, argumentos);
+                return new NodoNewObjeto(tokenNew, tokenIdClase, tipo, argumentos);
             }
             List<NodoExpresion> tamanios = dimensionesConTamanio();
-            return new NodoNewArreglo(tokenIdClase, tipo, tamanios);
+            return new NodoNewArreglo(tokenNew, tokenIdClase, tipo, tamanios);
         } else if (actualEn(PRIMEROS_TIPO_PRIMITIVO)) {
             Token tokenTipo = tokenActual;
             TipoPrimitivo tipo = tipoPrimitivo();
             List<NodoExpresion> tamanios = dimensionesConTamanio();
-            return new NodoNewArreglo(tokenTipo, tipo, tamanios);
+            return new NodoNewArreglo(tokenNew, tokenTipo, tipo, tamanios);
         } else if (actualEn(Set.of("idGen"))) {
             Token tokenTipo = consumir("idGen");
-            TipoParametro tipo = new TipoParametro(tokenTipo.getLexema(), tokenTipo);
+            TipoParametro tipo = new TipoParametro(tokenTipo.getLexema(), entidadActual(), tokenTipo);
             List<NodoExpresion> tamanios = dimensionesConTamanio();
-            return new NodoNewArreglo(tokenTipo, tipo, tamanios);
+            return new NodoNewArreglo(tokenNew, tokenTipo, tipo, tamanios);
         } else {
             throw error("un tipo de arreglo o constructor");
         }
@@ -952,10 +962,11 @@ public class AnalizadorSintactico {
     // <LlamadaMetodoEstatico> ::= idClase . idMetVar <ArgsActuales>
     private NodoExpresion llamadaMetodoEstatico() throws IOException {
         Token tokenClase = consumir("idClase");
-        match("punto");
+        Token tokenPunto = consumir("punto");
         Token tokenMetodo = consumir("idMV");
+        Token tokenParA = actualEn(Set.of("parA")) ? tokenActual : null;
         List<NodoExpresion> argumentos = argsActuales();
-        return new NodoLlamadaEstatica(tokenClase, tokenMetodo, argumentos);
+        return new NodoLlamadaEstatica(tokenClase, tokenPunto, tokenMetodo, tokenParA, argumentos);
     }
 
     // <DimensionesConTamanio> ::= [ <Expresion> ] <DCTResto>
@@ -1002,13 +1013,5 @@ public class AnalizadorSintactico {
             expresiones.add(expresion());
         }
         return expresiones;
-    }
-
-    // <AccesoArreglo> ::= [ <Expresion> ]
-    private NodoExpresion accesoArreglo() throws IOException {
-        match("corcheteA");
-        NodoExpresion expresion = expresion();
-        match("corcheteC");
-        return expresion;
     }
 }

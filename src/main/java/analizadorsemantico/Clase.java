@@ -203,6 +203,9 @@ public class Clase extends Entidad {
     }
 
     private void recorrerAncestros(Map<String, Tipo> sustitucion, Clase claseAncestro) {
+        if (claseAncestro == this) {
+            return;
+        }
         for (Metodo metodoHeredado : claseAncestro.metodos.values()) {
             Metodo heredado = metodoHeredado.instanciar(sustitucion);
             Metodo propio = metodos.get(heredado.getClave());
@@ -231,7 +234,7 @@ public class Clase extends Entidad {
                     nuevaSustitucion.put(parametro,
                             argumento != null
                                     ? argumento.sustituir(sustitucion)
-                                    : new TipoParametro(parametro, claseAncestro.ancestro.getToken()));
+                                    : new TipoParametro(parametro, siguiente, claseAncestro.ancestro.getToken()));
                 }
                 recorrerAncestros(nuevaSustitucion, (Clase) siguiente);
             }
@@ -287,7 +290,7 @@ public class Clase extends Entidad {
             sustitucion.put(parametro,
                     argumento != null
                             ? argumento
-                            : new TipoParametro(parametro, referencia.getToken()));
+                            : new TipoParametro(parametro, ancestro, referencia.getToken()));
         }
         return sustitucion;
     }
