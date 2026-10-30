@@ -1,11 +1,31 @@
-///[Error:Caja|9]
-// Creacion de una entidad generica sin argumento de tipo (tipo raw)
-class Caja<T> {
-    T contenido;
+///[Error:=|9]
+// El lado izquierdo de la asignación es no asignable - ln: 9
+class A1 {
+    int a1;
+    
+    static void m1(int p1)
+    
+    {
+        new A1() = 5;
+       
+    }
+    
+     void m2()
+    {}
+         
+    
+
 }
 
-class Uso {
-    void m() {
-        var caja = new Caja();
-    }
+
+class B2 extends A1{
+    
 }
+
+
+class Init{
+    static void main()
+    { }
+}
+
+

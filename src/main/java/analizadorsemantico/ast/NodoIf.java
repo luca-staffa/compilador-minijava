@@ -32,7 +32,7 @@ public class NodoIf extends NodoSentencia {
 
     private void chequearRama(NodoSentencia sentencia, TablaDeSimbolos ts) {
         if (sentencia instanceof NodoVarLocal) {
-            errorEn(((NodoVarLocal) sentencia).getTokenNombre(),
+            errorEn(((NodoVarLocal) sentencia).getTokenVar(),
                     "no se puede declarar una variable local como cuerpo directo de un if");
         }
         sentencia.chequear(ts);

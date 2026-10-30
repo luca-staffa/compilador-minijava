@@ -24,7 +24,7 @@ public class NodoEncadenadoArreglo extends NodoEncadenado {
         }
         InfoCheck infoIndice = indice.chequear(ts);
         if (!NodoExpresion.esInt(infoIndice.getTipo())) {
-            errorEn(indice.getToken(), "el indice de un arreglo debe ser int");
+            errorEn(token, "el indice de un arreglo debe ser int");
         }
         TipoArreglo arreglo = (TipoArreglo) receptor;
         Tipo componente = arreglo.getDimensiones() == 1

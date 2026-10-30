@@ -13,13 +13,19 @@ import analizadorsemantico.VariableLocal;
 /** Declaracion de variable local con inferencia de tipo. */
 public class NodoVarLocal extends NodoSentencia {
 
+    private final Token tokenVar;
     private final Token tokenNombre;
     private final NodoExpresion inicializador;
 
-    public NodoVarLocal(Token tokenNombre, NodoExpresion inicializador) {
+    public NodoVarLocal(Token tokenVar, Token tokenNombre, NodoExpresion inicializador) {
         super(tokenNombre);
+        this.tokenVar = tokenVar;
         this.tokenNombre = tokenNombre;
         this.inicializador = inicializador;
+    }
+
+    public Token getTokenVar() {
+        return tokenVar;
     }
 
     public Token getTokenNombre() {
@@ -45,10 +51,10 @@ public class NodoVarLocal extends NodoSentencia {
         InfoCheck info = inicializador.chequear(ts);
         Tipo tipo = info.getTipo();
         if (tipo instanceof TipoVoid) {
-            errorEn(tokenNombre, "no se puede inferir el tipo de una llamada void");
+            errorEn(inicializador.getToken(), "no se puede inferir el tipo de una llamada void");
         }
         if (tipo instanceof TipoNull) {
-            errorEn(tokenNombre, "no se puede inferir el tipo de la variable " + nombre
+            errorEn(inicializador.getToken(), "no se puede inferir el tipo de la variable " + nombre
                     + " a partir de null");
         }
 

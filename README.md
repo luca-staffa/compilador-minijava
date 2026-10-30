@@ -12,8 +12,7 @@ de **chequeo de declaraciones** y la **consolidación** de clases e interfaces.
 La Etapa 4 extiende al analizador sintáctico para que **construya los AST** de
 los cuerpos de métodos y constructores y los asocie a la Tabla de Símbolos, y
 agrega el **chequeo de sentencias**: resolución de nombres, chequeo de tipos,
-información estructural, ámbitos locales y contexto estático. El detalle fase
-por fase está en `Etapa4_Base.md`.
+información estructural, ámbitos locales y contexto estático.
 
 ## Requisitos
 
@@ -65,22 +64,25 @@ Error Semantico en linea 7: el tipo A1 ya fue declarado
 ```
 
 La comparación de tokens en los casos con error es sensible al lexema y al
-número de línea (formato `///[Error:lexema|nroLinea]`, igual que en la Etapa 2).
+número de línea (formato `//[Error:lexema|nroLinea]`, igual que en la Etapa 2).
 
 ## Estructura
 
 - `moduloprincipal.ModuloPrincipal`: interfaz con el usuario. Crea la
   `TablaDeSimbolos` (con las entidades predefinidas), el `AnalizadorLexico` y el
   `AnalizadorSintactico`; dispara el análisis, ejecuta el chequeo de
-  declaraciones y la consolidación, y reporta el resultado.
+  declaraciones, la consolidación y el chequeo de cuerpos, y reporta el resultado.
 - `analizadorsintactico.AnalizadorSintactico`: parser descendente recursivo que,
   además de validar la sintaxis, ejecuta las acciones semánticas que construyen
-  la tabla de símbolos (controles de nombres repetidos de la primera pasada).
+  la tabla de símbolos (controles de nombres repetidos de la primera pasada) y los
+  AST de los cuerpos de métodos y constructores.
 - `analizadorsemantico`: modelo de la Tabla de Símbolos.
   - `TablaDeSimbolos`: tabla global de tipos, entidades predefinidas, contexto
-    actual y punto de entrada de `estaBienDeclarada()` y `consolidar()`.
-  - `Entidad` (abstracta): `Clase`, `Interfaz`, `Metodo`, `Constructor`,
-    `Atributo`, `Parametro`; todas conservan el token de su declaración.
+    actual y punto de entrada de `estaBienDeclarada()`, `consolidar()` y
+    `chequearCuerpos()`.
+  - `Entidad` (abstracta): `Clase`, `Interfaz`, `Unidad`, `Atributo`,
+    `Parametro`; `Unidad` (abstracta) agrupa `Metodo` y `Constructor`. Todas
+    conservan el token de su declaración.
   - `Tipo` (abstracta): `TipoPrimitivo`, `TipoVoid`, `TipoParametro`,
     `TipoArreglo`, `TipoReferencia`.
   - `ExcepcionSemantica`: error semántico con lexema, línea y mensaje.
@@ -136,7 +138,7 @@ java -cp "build/classes:build/test-classes:lib/junit-4.13.2.jar:lib/hamcrest-cor
 
 Los testers recorren `resources/sinErrores/` (deben aceptarse) y
 `resources/conErrores/` (deben rechazarse; la primera línea del archivo lleva el
-código esperado con el formato `///[Error:lexema|nroLinea]`).
+código esperado con el formato `//[Error:lexema|nroLinea]`).
 
 Para agregar un caso basta con crear el archivo en la carpeta correspondiente;
 los testers lo incorporan automáticamente.

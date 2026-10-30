@@ -23,7 +23,7 @@ public class NodoWhile extends NodoSentencia {
             errorEn(condicion.getTokenValor(), "la condicion del while debe ser de tipo boolean");
         }
         if (cuerpo instanceof NodoVarLocal) {
-            errorEn(((NodoVarLocal) cuerpo).getTokenNombre(),
+            errorEn(((NodoVarLocal) cuerpo).getTokenVar(),
                     "no se puede declarar una variable local como cuerpo directo de un while");
         }
         cuerpo.chequear(ts);

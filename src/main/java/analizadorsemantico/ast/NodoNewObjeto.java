@@ -42,7 +42,7 @@ public class NodoNewObjeto extends NodoExpresion {
                     + " porque no es una clase");
         }
         if (!(entidad instanceof Clase)) {
-            errorEn(token, "no se puede instanciar " + tipo.getNombreReferencia()
+            errorEn(tokenTipo, "no se puede instanciar " + tipo.getNombreReferencia()
                     + " porque no es una clase");
         }
         if (!tipo.esDiamante()) {

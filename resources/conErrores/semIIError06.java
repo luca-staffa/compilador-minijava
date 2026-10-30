@@ -1,9 +1,26 @@
-///[Error:a|7]
-// Acceso implicito a un atributo desde un contexto estatico
-class AA {
-    int a;
-
-    static void m() {
-        a = 1;
+//[Error:v1|9]
+// La variable v1 no fue declarada - ln: 9
+class A1 {
+    int a1;
+    
+     void m1(int p1)
+    
+    {
+        v1 = 4;
+       
     }
+    
+
+         
+    
+
 }
+
+
+
+class Init{
+    static void main()
+    { }
+}
+
+

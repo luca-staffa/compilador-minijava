@@ -1,32 +1,23 @@
-// Interfaces, herencia y conformidad entre tipos
-interface Medible {
-    int medir();
+// Prueba una expresion con operadores binarios y unarios
+
+class A1 {
+    int a1;
+    
+     void m1(boolean x)
+    {
+        x = ((4+ 10 + 33) > 12) || ((99*15) == 23) && (97<=12) || !true && ((4/2) != 2);
+    }
+    
+     void m2()
+    {}
+         
+    
+
 }
 
-class Base {
-    int valor;
 
-    int obtener() {
-        return valor;
-    }
-}
 
-class Derivada extends Base {
-}
-
-class Implementa implements Medible {
-    int medir() {
-        return 1;
-    }
-
-    void usar(Medible medible, Implementa implementa) {
-        medible = implementa;
-    }
-}
-
-class Uso2 {
-    void m(Derivada derivada, Base base) {
-        base = derivada;
-        var x = derivada.obtener();
-    }
+class Init{
+    static void main()
+    { }
 }

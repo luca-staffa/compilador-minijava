@@ -685,11 +685,11 @@ public class AnalizadorSintactico {
 
     // <VarLocal> ::= var idMetVar = <ExpresionCompuesta>
     private NodoVarLocal varLocal() throws IOException {
-        match("pr_var");
+        Token tokenVar = consumir("pr_var");
         Token tokenNombre = consumir("idMV");
         match("op=");
         NodoExpresion inicializador = expresionCompuesta();
-        return new NodoVarLocal(tokenNombre, inicializador);
+        return new NodoVarLocal(tokenVar, tokenNombre, inicializador);
     }
 
     // <Return> ::= return <ExpresionOpcional>
@@ -864,14 +864,14 @@ public class AnalizadorSintactico {
     //            | epsilon
     private NodoEncadenado rResto() throws IOException {
         if (actualEn(Set.of("punto"))) {
-            Token tokenPunto = consumir("punto");
+            consumir("punto");
             Token tokenNombre = consumir("idMV");
             List<NodoExpresion> argumentos = metodoOVar();
             NodoEncadenado siguiente = rResto();
             if (argumentos == null) {
-                return new NodoEncadenadoAtributo(tokenPunto, tokenNombre, siguiente);
+                return new NodoEncadenadoAtributo(tokenNombre, siguiente);
             }
-            return new NodoEncadenadoLlamada(tokenPunto, tokenNombre, argumentos, siguiente);
+            return new NodoEncadenadoLlamada(tokenNombre, argumentos, siguiente);
         } else if (actualEn(Set.of("corcheteA"))) {
             Token tokenCorchete = consumir("corcheteA");
             NodoExpresion indice = expresion();

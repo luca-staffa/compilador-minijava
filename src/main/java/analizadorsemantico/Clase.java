@@ -177,7 +177,8 @@ public class Clase extends Entidad {
             }
             String nombreAncestro = clase.ancestro.getNombreReferencia();
             if (!visitados.add(nombreAncestro)) {
-                error("la clase " + nombre + " tiene herencia circular");
+                errorEn(this.ancestro.getToken(),
+                        "la clase " + nombre + " tiene herencia circular");
             }
             actual = ts.getTipo(nombreAncestro);
         }
@@ -258,8 +259,12 @@ public class Clase extends Entidad {
         Interfaz interfaz = (Interfaz) entidadAncestro;
         for (Metodo requerido : interfaz.getMetodosInstanciados(sustitucionPara(ancestro, interfaz)).values()) {
             Metodo propio = metodos.get(requerido.getClave());
-            if (propio != null && !propio.esEstatico() && propio.mismaSignatura(requerido)) {
-                continue;
+            if (propio != null && !propio.esEstatico()) {
+                if (propio.mismaSignatura(requerido)) {
+                    continue;
+                }
+                errorEn(propio.getToken(), "el metodo " + propio.getNombre()
+                        + " no coincide con el de la interfaz " + interfaz.getNombre());
             }
             if (!tieneMetodoHeredadoCompatible(requerido)) {
                 error("la clase " + nombre + " no implementa el metodo " + requerido.getNombre()

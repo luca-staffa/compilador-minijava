@@ -14,15 +14,16 @@ MiniJava compiler (UNS Compiladores, Etapa 4). Work happens in
   `../md/MiniJava-Semantica-Completa-2026/MiniJava-Semantica-Completa-2026.md`
   (both Spanish). `Etapa4_Base.md` documents the Etapa 4 base phase by phase;
   the README lists compile/run and the module structure.
-- `./CorrerTests.sh` reports `OK (404 tests)`: the 15 tracked fixtures plus the
-  `TAMBIENBORRAR_*.txt` battery (new course convention). The old `BORRAR_*.txt`
-  staging duplicates (137 files, CN-SII convention with contradictory error
-  tokens) were moved to `tests_descartados/` so the testers no longer discover
-  them; `semIIError07` was updated to the new convention (`[Error:true|5]`).
-- Error-token convention (new suite): `new` for creation errors, `.`/`[` for
-  selector/index errors, the offending subexpression for index/size/return/
-  condition type errors, and the method name for implicit-call resolution.
-  `NodoExpresion.getTokenValor()` / `getTokenSentencia()` route these.
+- `./CorrerTests.sh` reports `OK (146 tests)`: the 10 catedra fixtures
+  (`semIIError01-05`, `semIICorrecto01-05`, intact) plus the `testersSala`
+  battery renumbered from `06` (`semIIError06..77`, `semIICorrecto06..70`).
+  The discarded originals live in `../tests_descartados/`; the sala case
+  `semIICorrecto56` (renumbered `61`) was discarded because `crear()` without a
+  receiver does not resolve per §10.2.
+- Error-token convention (Pautas): the lexeme is the token of the node that has
+  the error: the operator/keyword (`+`, `=`, `[`, `new`, `return`, `var`) or the
+  name of the variable/attribute/method (`m2`, `hacer`, `nombre`, `length`).
+  Do not use a child subexpression token or a bare `.`.
 - Etapa 4 deliverable also needs a report (compile/run instructions, AST class
   diagram, logros attempted); `Informe_etapa1-3.*` cover earlier stages only.
 

@@ -44,7 +44,7 @@ public class NodoNewArreglo extends NodoExpresion {
         for (NodoExpresion tamanio : tamanios) {
             InfoCheck info = tamanio.chequear(ts);
             if (!esInt(info.getTipo())) {
-                errorEn(tamanio.getToken(), "el tamanio de una dimension debe ser int");
+                errorEn(token, "el tamanio de una dimension debe ser int");
             }
         }
         return InfoCheck.valor(new TipoArreglo(tipoBase, tamanios.size(), tokenTipo));

@@ -46,12 +46,12 @@ public class NodoLlamadaEstatica extends NodoExpresion {
         Clase clase = (Clase) entidad;
         Metodo metodo = clase.getMetodos().get(tokenMetodo.getLexema() + "/" + argumentos.size());
         if (metodo == null) {
-            errorEn(tokenPunto, "el metodo " + tokenMetodo.getLexema() + " con "
+            errorEn(tokenMetodo, "el metodo " + tokenMetodo.getLexema() + " con "
                     + argumentos.size() + " parametro(s) no fue declarado en "
                     + clase.getNombre());
         }
         if (!metodo.esEstatico()) {
-            errorEn(tokenPunto, "el metodo " + tokenMetodo.getLexema()
+            errorEn(tokenMetodo, "el metodo " + tokenMetodo.getLexema()
                     + " no es estatico y no puede invocarse con el nombre de la clase");
         }
         chequearArgumentos(ts, metodo.getParametros(), argumentos, tokenMetodo,

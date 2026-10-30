@@ -20,9 +20,9 @@ public class NodoEncadenadoLlamada extends NodoEncadenado {
     private final Token tokenNombre;
     private final List<NodoExpresion> argumentos;
 
-    public NodoEncadenadoLlamada(Token tokenPunto, Token tokenNombre, List<NodoExpresion> argumentos,
+    public NodoEncadenadoLlamada(Token tokenNombre, List<NodoExpresion> argumentos,
                                  NodoEncadenado siguiente) {
-        super(tokenPunto, siguiente);
+        super(tokenNombre, siguiente);
         this.tokenNombre = tokenNombre;
         this.nombre = tokenNombre.getLexema();
         this.argumentos = argumentos;

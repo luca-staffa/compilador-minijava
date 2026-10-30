@@ -7,6 +7,7 @@
 \usepackage{url}
 \usepackage{graphicx}
 \usepackage{tikz}
+\usepackage{float}
 
 \title{Etapa 4 - AST y Chequeo de Sentencias de MiniJava}
 \author{Compiladores e Intérpretes --- UNS, 2026}
@@ -70,7 +71,7 @@ el chequeo de declaraciones (\texttt{estaBienDeclarada}), la consolidación
 error léxico, sintáctico o semántico captura la excepción correspondiente, reporta
 el mensaje y el código de error, y finaliza la ejecución.
 
-\begin{figure}[h]
+\begin{figure}[H]
 \centering
 \resizebox{\textwidth}{!}{%
 \begin{tikzpicture}[font=\scriptsize]
@@ -154,8 +155,7 @@ correctos.
 
 Los tipos de nodo del AST se \emph{diseñan} a partir de la gramática original del
 lenguaje (los constructores sintácticos que tienen significado), pero el AST se
-\emph{construye} durante el análisis sintáctico con una Especificación Dirigida
-por la Traducción (EDT) sobre la gramática LL(1) que efectivamente implementa el
+\emph{construye} durante el análisis sintáctico con un EDT sobre la gramática LL(1) que efectivamente implementa el
 parser. La cátedra pide explícitamente esta separación: el diseño se guía por la
 gramática original, mientras que la construcción se hace sobre la gramática del
 parser.
@@ -235,8 +235,7 @@ NodoEncadenado (abstracta) <-----------+
 
 \texttt{NodoReferencia} modela \texttt{Primario RResto}: un primario seguido de un
 encadenado opcional. Cada eslabón recibe el tipo estático del receptor, lo controla
-y delega en el siguiente. Esto cubre accesos como \texttt{crearPersona().edad},
-\texttt{matriz[0].length} o \texttt{caja.obtener().toString()}.
+y delega en el siguiente. Esto cubre accesos como \texttt{crearPersona().edad}, o \texttt{caja.obtener().toString()}.
 
 \subsection{Jerarquía de sentencias}
 
@@ -635,16 +634,15 @@ En Windows el separador del classpath es \texttt{;} en lugar de \texttt{:}.
 
 \section{Tests}
 
-Se incluyen los casos provistos por la cátedra y casos propios desarrollados para
-esta etapa (el diseño de los casos de prueba es responsabilidad del alumno).
-Resultado actual: \textbf{404/404 casos OK}.
+Se incluyen los 10 casos de la cátedra (\texttt{semIIError01--05} y
+\texttt{semIICorrecto01--05}) junto con la batería de laboratorio
+(\texttt{semIIError06--77} y \texttt{semIICorrecto06--70}). Resultado actual:
+\textbf{146/146 casos OK}.
 
 Los testers descubren automáticamente todos los archivos de
-\texttt{resources/sinErrores/} y \texttt{resources/conErrores/}. La batería
-utilizada es la de la cátedra (archivos \texttt{TAMBIENBORRAR\_*.txt}) junto con
-los casos base \texttt{semIIError*.java} y \texttt{semIICorrecto*.java}. Los
-archivos antiguos de convención previa que contradecían a la batería nueva se
-apartaron en \texttt{tests\_descartados/} para que los testers no los descubran.
+\texttt{resources/sinErrores/} y \texttt{resources/conErrores/}: 77 casos con
+errores y 69 sin errores. El caso \texttt{semIICorrecto61} se descartó porque usa
+\texttt{crear()} sin receptor, que no resuelve según §10.2.
 
 Los casos sin errores cubren, entre otros: predefinidas y uso de
 \texttt{Object.debugPrint} y \texttt{toString} (en clases, interfaces, arreglos y

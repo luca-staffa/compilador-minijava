@@ -22,13 +22,12 @@ public class NodoExpresionAsignacion extends NodoExpresion {
     @Override
     public InfoCheck chequear(TablaDeSimbolos ts) {
         InfoCheck infoIzquierda = izquierda.chequear(ts);
-        InfoCheck infoDerecha = derecha.chequear(ts);
-        Tipo tipoIzquierda = infoIzquierda.getTipo();
-        Tipo tipoDerecha = infoDerecha.getTipo();
-
         if (!infoIzquierda.esAsignable()) {
             error("el lado izquierdo de la asignacion no es asignable");
         }
+        InfoCheck infoDerecha = derecha.chequear(ts);
+        Tipo tipoIzquierda = infoIzquierda.getTipo();
+        Tipo tipoDerecha = infoDerecha.getTipo();
         if (tipoIzquierda instanceof TipoVoid || tipoDerecha instanceof TipoVoid) {
             error("no se puede asignar un valor de tipo void");
         }
