@@ -14,9 +14,19 @@ import analizadorsemantico.ast.NodoBloque;
 public abstract class Unidad extends Entidad {
 
     private NodoBloque cuerpo;
+    protected String etiqueta;
 
     protected Unidad(Token token, TablaDeSimbolos ts) {
         super(token, ts);
+    }
+
+    /** Etiqueta CeIASM con la que se referencia el codigo de esta unidad. */
+    public String getEtiqueta() {
+        return etiqueta;
+    }
+
+    public void setEtiqueta(String etiqueta) {
+        this.etiqueta = etiqueta;
     }
 
     public NodoBloque getCuerpo() {

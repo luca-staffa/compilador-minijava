@@ -1,6 +1,7 @@
 package analizadorsemantico.ast;
 
 import analizadorlexico.Token;
+import analizadorsemantico.Generador;
 import analizadorsemantico.InfoCheck;
 import analizadorsemantico.TablaDeSimbolos;
 import analizadorsemantico.Tipo;
@@ -35,5 +36,21 @@ public class NodoEncadenadoArreglo extends NodoEncadenado {
             return siguiente.chequear(ts, componente);
         }
         return InfoCheck.asignable(componente);
+    }
+
+    @Override
+    public void generar(Generador g, boolean destino) {
+        // El tope de la pila contiene la referencia al arreglo.
+        indice.generar(g);
+        g.emit("ADD", "suma el indice a la referencia");
+        if (destino && siguiente == null) {
+            g.emit("SWAP");
+            g.emit("STOREREF 2", "guarda en la componente del arreglo");
+            return;
+        }
+        g.emit("LOADREF 2", "apila la componente del arreglo");
+        if (siguiente != null) {
+            siguiente.generar(g, destino);
+        }
     }
 }

@@ -2,6 +2,7 @@ package analizadorsemantico.ast;
 
 import analizadorlexico.Token;
 import analizadorsemantico.Constructor;
+import analizadorsemantico.Generador;
 import analizadorsemantico.InfoCheck;
 import analizadorsemantico.Metodo;
 import analizadorsemantico.SemanticaUtil;
@@ -48,5 +49,22 @@ public class NodoReturn extends NodoSentencia {
                     + " no conforma con el tipo de retorno "
                     + tipoRetorno.getNombre());
         }
+    }
+
+    @Override
+    public void generar(Generador g) {
+        boolean constructor = g.esConstructor();
+        boolean dejaValor = !g.metodoVoid();
+        if (constructor) {
+            g.emit("LOAD 3", "copia this en la celda de retorno");
+            g.emit("STORE " + g.getOffsetRetorno());
+        } else if (dejaValor && expresion != null) {
+            expresion.generar(g);
+            g.emit("STORE " + g.getOffsetRetorno(), "guarda el valor de retorno");
+        }
+        g.emit("FMEM " + g.getLocalesVivas(), "libera las variables locales vivas");
+        g.emit("STOREFP", "restablece el contexto del llamador");
+        int m = g.esEstatico() ? g.getAridad() : g.getAridad() + 1;
+        g.emit("RET " + m);
     }
 }

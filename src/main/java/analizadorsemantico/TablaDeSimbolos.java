@@ -158,6 +158,11 @@ public class TablaDeSimbolos {
         }
     }
 
+    /** Genera el programa CeIASM correspondiente a la tabla ya chequeada. */
+    public String generarCodigo() {
+        return new Generador(this).generar();
+    }
+
     /**
      * Chequeo de sentencias: recorre el cuerpo de cada unidad declarada por el
      * usuario en la clase donde fue declarada. Los cuerpos heredados por

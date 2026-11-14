@@ -1,6 +1,7 @@
 package analizadorsemantico.ast;
 
 import analizadorlexico.Token;
+import analizadorsemantico.Generador;
 import analizadorsemantico.InfoCheck;
 import analizadorsemantico.TablaDeSimbolos;
 
@@ -25,6 +26,11 @@ public class NodoExpresionParentizada extends NodoExpresion {
     public InfoCheck chequear(TablaDeSimbolos ts) {
         InfoCheck info = expresion.chequear(ts);
         return InfoCheck.valor(info.getTipo());
+    }
+
+    @Override
+    public void generar(Generador g) {
+        expresion.generar(g);
     }
 
     @Override

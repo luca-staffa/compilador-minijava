@@ -1,6 +1,7 @@
 package analizadorsemantico.ast;
 
 import analizadorlexico.Token;
+import analizadorsemantico.Generador;
 import analizadorsemantico.InfoCheck;
 import analizadorsemantico.SemanticaUtil;
 import analizadorsemantico.TablaDeSimbolos;
@@ -23,5 +24,10 @@ public class NodoThis extends NodoExpresion {
             error("this no puede utilizarse fuera de una clase");
         }
         return InfoCheck.valor(tipo);
+    }
+
+    @Override
+    public void generar(Generador g) {
+        g.emit("LOAD 3", "apila la referencia a this");
     }
 }

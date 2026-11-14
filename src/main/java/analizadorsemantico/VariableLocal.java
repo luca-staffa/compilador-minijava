@@ -10,6 +10,7 @@ public class VariableLocal extends Entidad {
 
     private final Tipo tipo;
     private final Bloque bloque;
+    private int offset;
 
     public VariableLocal(Token token, Tipo tipo, Bloque bloque, TablaDeSimbolos ts) {
         super(token, ts);
@@ -23,6 +24,15 @@ public class VariableLocal extends Entidad {
 
     public Bloque getBloque() {
         return bloque;
+    }
+
+    /** Desplazamiento de la variable dentro del RA de su unidad. */
+    public int getOffset() {
+        return offset;
+    }
+
+    public void setOffset(int offset) {
+        this.offset = offset;
     }
 
     @Override

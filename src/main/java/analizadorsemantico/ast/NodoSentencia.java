@@ -2,6 +2,7 @@ package analizadorsemantico.ast;
 
 import analizadorlexico.Token;
 import analizadorsemantico.ExcepcionSemantica;
+import analizadorsemantico.Generador;
 import analizadorsemantico.TablaDeSimbolos;
 
 /** Nodo de sentencia del AST. Las sentencias no tienen tipo. */
@@ -18,6 +19,9 @@ public abstract class NodoSentencia {
     }
 
     public abstract void chequear(TablaDeSimbolos ts);
+
+    /** Genera el codigo CeIASM de la sentencia. */
+    public abstract void generar(Generador g);
 
     protected void error(String mensaje) {
         throw new ExcepcionSemantica(token.getLexema(), token.getNroLinea(), mensaje);

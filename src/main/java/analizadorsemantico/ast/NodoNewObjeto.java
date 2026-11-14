@@ -8,6 +8,7 @@ import analizadorlexico.Token;
 import analizadorsemantico.Clase;
 import analizadorsemantico.Constructor;
 import analizadorsemantico.Entidad;
+import analizadorsemantico.Generador;
 import analizadorsemantico.InfoCheck;
 import analizadorsemantico.Parametro;
 import analizadorsemantico.SemanticaUtil;
@@ -25,6 +26,9 @@ public class NodoNewObjeto extends NodoExpresion {
     private final Token tokenTipo;
     private final TipoReferencia tipo;
     private final List<NodoExpresion> argumentos;
+
+    private Clase clase;
+    private Constructor constructor;
 
     public NodoNewObjeto(Token tokenNew, Token tokenTipo, TipoReferencia tipo,
                          List<NodoExpresion> argumentos) {
@@ -48,21 +52,21 @@ public class NodoNewObjeto extends NodoExpresion {
         if (!tipo.esDiamante()) {
             SemanticaUtil.validarTipo(tipo, ts, tokenTipo);
         }
-        Clase clase = (Clase) entidad;
-        if (clase.getParametroGenerico() != null && tipo.getArgumento() == null) {
-            errorEn(tokenTipo, "el tipo " + clase.getNombre()
+        Clase claseResuelta = (Clase) entidad;
+        if (claseResuelta.getParametroGenerico() != null && tipo.getArgumento() == null) {
+            errorEn(tokenTipo, "el tipo " + claseResuelta.getNombre()
                     + " es generico y requiere un argumento de tipo");
         }
 
-        Constructor constructor = clase.getConstructores().get(argumentos.size());
-        if (constructor == null) {
-            error("la clase " + clase.getNombre() + " no tiene un constructor con "
+        Constructor constructorResuelto = claseResuelta.getConstructores().get(argumentos.size());
+        if (constructorResuelto == null) {
+            error("la clase " + claseResuelta.getNombre() + " no tiene un constructor con "
                     + argumentos.size() + " parametro(s)");
         }
 
-        Map<String, Tipo> sustitucion = SemanticaUtil.sustitucionVista(clase, tipo);
+        Map<String, Tipo> sustitucion = SemanticaUtil.sustitucionVista(claseResuelta, tipo);
         List<Parametro> formales = new ArrayList<>();
-        for (Parametro parametro : constructor.getParams().values()) {
+        for (Parametro parametro : constructorResuelto.getParams().values()) {
             formales.add(new Parametro(
                     parametro.getToken(),
                     parametro.getTipo().sustituir(sustitucion),
@@ -70,7 +74,28 @@ public class NodoNewObjeto extends NodoExpresion {
                     ts));
         }
         chequearArgumentos(ts, formales, argumentos, token,
-                "el constructor de " + clase.getNombre());
+                "el constructor de " + claseResuelta.getNombre());
+        clase = claseResuelta;
+        constructor = constructorResuelto;
         return InfoCheck.llamada(tipo);
+    }
+
+    @Override
+    public void generar(Generador g) {
+        int tamano = clase.getAtributos().size() + 1; // atributos + referencia a la VT
+        g.emit("RMEM 1", "reserva la celda de retorno (referencia al objeto)");
+        g.emit("PUSH " + tamano, "tamano del CIR");
+        g.emit("PUSH simple_malloc", "reserva memoria en el heap");
+        g.emit("CALL");
+        g.emit("DUP", "conserva la referencia al objeto");
+        g.emit("PUSH lblVT" + clase.getNombre(), "apila la tabla virtual de la clase");
+        g.emit("STOREREF 0", "inicializa la referencia a la VT");
+        g.emit("DUP");
+        for (NodoExpresion argumento : argumentos) {
+            argumento.generar(g);
+            g.emit("SWAP");
+        }
+        g.emit("PUSH " + constructor.getEtiqueta(), "apila el constructor");
+        g.emit("CALL");
     }
 }

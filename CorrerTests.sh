@@ -25,4 +25,4 @@ mkdir -p build/test-classes
 javac -cp "build/classes:$JUNIT_JAR:$HAMCREST_JAR" -d build/test-classes src/test/java/test/*.java
 
 java -cp "build/classes:build/test-classes:$JUNIT_JAR:$HAMCREST_JAR" org.junit.runner.JUnitCore \
-    test.TesterDeCasosSinErrores test.TesterDeCasosConErrores
+    test.TesterDeCasosSinErrores test.TesterDeCasosSinErroresSemantico test.TesterDeCasosConErrores

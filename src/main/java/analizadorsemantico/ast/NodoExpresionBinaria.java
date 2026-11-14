@@ -1,6 +1,7 @@
 package analizadorsemantico.ast;
 
 import analizadorlexico.Token;
+import analizadorsemantico.Generador;
 import analizadorsemantico.InfoCheck;
 import analizadorsemantico.SemanticaUtil;
 import analizadorsemantico.TablaDeSimbolos;
@@ -62,6 +63,32 @@ public class NodoExpresionBinaria extends NodoExpresion {
             default:
                 error("operador binario desconocido " + operador.getLexema());
                 return null;
+        }
+    }
+
+    @Override
+    public void generar(Generador g) {
+        izquierda.generar(g);
+        derecha.generar(g);
+        g.emit(instruccion(), "operador " + operador.getLexema());
+    }
+
+    private String instruccion() {
+        switch (operador.getNombre()) {
+            case "op+": return "ADD";
+            case "op-": return "SUB";
+            case "op*": return "MUL";
+            case "op/": return "DIV";
+            case "op%": return "MOD";
+            case "op<": return "LT";
+            case "op>": return "GT";
+            case "op<=": return "LE";
+            case "op>=": return "GE";
+            case "op&&": return "AND";
+            case "op||": return "OR";
+            case "op==": return "EQ";
+            case "op!=": return "NE";
+            default: throw new IllegalStateException("operador binario desconocido");
         }
     }
 

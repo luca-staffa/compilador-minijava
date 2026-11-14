@@ -1,6 +1,7 @@
 package analizadorsemantico.ast;
 
 import analizadorlexico.Token;
+import analizadorsemantico.Generador;
 import analizadorsemantico.InfoCheck;
 import analizadorsemantico.TablaDeSimbolos;
 
@@ -39,6 +40,24 @@ public class NodoReferencia extends NodoExpresion {
             return InfoCheck.valor(info.getTipo());
         }
         return info;
+    }
+
+    @Override
+    public void generar(Generador g) {
+        primario.generar(g);
+        if (encadenado != null) {
+            encadenado.generar(g, false);
+        }
+    }
+
+    @Override
+    public void generarDestino(Generador g) {
+        if (encadenado == null) {
+            primario.generarDestino(g);
+            return;
+        }
+        primario.generar(g);
+        encadenado.generar(g, true);
     }
 
     @Override

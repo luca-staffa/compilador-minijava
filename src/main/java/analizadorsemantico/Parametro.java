@@ -6,6 +6,7 @@ import analizadorlexico.Token;
 public class Parametro extends Entidad {
     private final Tipo tipo;
     private final int posicion;
+    private int offset;
 
     public Parametro(Token token, Tipo tipo, int posicion, TablaDeSimbolos ts) {
         super(token, ts);
@@ -19,6 +20,15 @@ public class Parametro extends Entidad {
 
     public int getPosicion() {
         return posicion;
+    }
+
+    /** Desplazamiento del parametro dentro del RA de su unidad. */
+    public int getOffset() {
+        return offset;
+    }
+
+    public void setOffset(int offset) {
+        this.offset = offset;
     }
 
     @Override

@@ -14,6 +14,7 @@ public class Metodo extends Unidad {
     private final Tipo tipoRetorno;
     private final Map<Integer, Parametro> params;
     private final boolean esEstatico;
+    private int offset = -1;
 
     public Metodo(Token token, Tipo tipoRetorno, List<Parametro> parametros,
                   boolean esEstatico, TablaDeSimbolos ts) {
@@ -56,6 +57,15 @@ public class Metodo extends Unidad {
         return esEstatico;
     }
 
+    /** Desplazamiento en la tabla virtual (solo metodos de instancia). */
+    public int getOffset() {
+        return offset;
+    }
+
+    public void setOffset(int offset) {
+        this.offset = offset;
+    }
+
     /** Clave de la signatura: (nombre, aridad). */
     public String getClave() {
         return nombre + "/" + params.size();
@@ -92,13 +102,18 @@ public class Metodo extends Unidad {
         }
         List<Parametro> nuevos = new ArrayList<>();
         for (Parametro parametro : params.values()) {
-            nuevos.add(new Parametro(
+            Parametro nuevo = new Parametro(
                     parametro.getToken(),
                     parametro.getTipo().sustituir(sustituciones),
                     parametro.getPosicion(),
-                    ts));
+                    ts);
+            nuevo.setOffset(parametro.getOffset());
+            nuevos.add(nuevo);
         }
-        return new Metodo(token, tipoRetorno.sustituir(sustituciones), nuevos, esEstatico, ts);
+        Metodo copia = new Metodo(token, tipoRetorno.sustituir(sustituciones), nuevos, esEstatico, ts);
+        copia.offset = offset;
+        copia.etiqueta = etiqueta;
+        return copia;
     }
 
     @Override

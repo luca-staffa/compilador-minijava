@@ -3,6 +3,7 @@ package analizadorsemantico.ast;
 import java.util.List;
 
 import analizadorlexico.Token;
+import analizadorsemantico.Generador;
 import analizadorsemantico.TablaDeSimbolos;
 
 /** Bloque de sentencias: establece un ambito lexico al entrar y lo restaura al salir. */
@@ -28,6 +29,13 @@ public class NodoBloque extends NodoSentencia {
             }
         } finally {
             ts.salirBloque();
+        }
+    }
+
+    @Override
+    public void generar(Generador g) {
+        for (NodoSentencia sentencia : sentencias) {
+            sentencia.generar(g);
         }
     }
 }

@@ -6,6 +6,7 @@ import analizadorlexico.Token;
 import analizadorsemantico.Atributo;
 import analizadorsemantico.Clase;
 import analizadorsemantico.Entidad;
+import analizadorsemantico.Generador;
 import analizadorsemantico.InfoCheck;
 import analizadorsemantico.SemanticaUtil;
 import analizadorsemantico.TablaDeSimbolos;
@@ -19,6 +20,9 @@ public class NodoEncadenadoAtributo extends NodoEncadenado {
 
     private final String nombre;
 
+    private Atributo atributo;
+    private boolean esLongitud;
+
     public NodoEncadenadoAtributo(Token tokenNombre, NodoEncadenado siguiente) {
         super(tokenNombre, siguiente);
         this.nombre = tokenNombre.getLexema();
@@ -30,6 +34,7 @@ public class NodoEncadenadoAtributo extends NodoEncadenado {
             if (!nombre.equals("length")) {
                 errorEn(token, "un arreglo no tiene el atributo " + nombre);
             }
+            esLongitud = true;
             Tipo tipo = new TipoPrimitivo(TipoPrimitivo.Base.INT, token);
             if (siguiente != null) {
                 return siguiente.chequear(ts, tipo);
@@ -49,16 +54,33 @@ public class NodoEncadenadoAtributo extends NodoEncadenado {
                     + " no declara atributos");
         }
         Clase clase = (Clase) entidad;
-        Atributo atributo = clase.getAtributos().get(nombre);
-        if (atributo == null) {
+        Atributo resuelto = clase.getAtributos().get(nombre);
+        if (resuelto == null) {
             errorEn(token, "el atributo " + nombre + " no existe en "
                     + clase.getNombre());
         }
+        atributo = resuelto;
         Map<String, Tipo> sustitucion = SemanticaUtil.sustitucionVista(clase, referencia);
-        Tipo tipo = atributo.getTipo().sustituir(sustitucion);
+        Tipo tipo = resuelto.getTipo().sustituir(sustitucion);
         if (siguiente != null) {
             return siguiente.chequear(ts, tipo);
         }
         return InfoCheck.asignable(tipo);
+    }
+
+    @Override
+    public void generar(Generador g, boolean destino) {
+        int offset = esLongitud ? 1 : atributo.getOffset();
+        if (destino && siguiente == null) {
+            g.emit("SWAP");
+            g.emit("STOREREF " + offset, "guarda en el atributo " + nombre);
+            return;
+        }
+        g.emit("LOADREF " + offset, esLongitud
+                ? "apila la longitud del arreglo"
+                : "apila el atributo " + nombre);
+        if (siguiente != null) {
+            siguiente.generar(g, destino);
+        }
     }
 }

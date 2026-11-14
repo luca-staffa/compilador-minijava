@@ -1,6 +1,7 @@
 package moduloprincipal;
 
 import java.io.IOException;
+import java.io.PrintWriter;
 
 import analizadorlexico.AnalizadorLexico;
 import analizadorlexico.ExcepcionLexica;
@@ -14,7 +15,7 @@ import sourcemanager.SourceManagerEficiente;
 public class ModuloPrincipal {
     public static void main(String[] args) {
         if (args.length == 0) {
-            System.out.println("Uso: java -jar Compilador.jar <archivo_fuente>");
+            System.out.println("Uso: java -jar Compilador.jar <archivo_fuente> [<archivo_salida>]");
             return;
         }
 
@@ -32,6 +33,11 @@ public class ModuloPrincipal {
             tablaDeSimbolos.estaBienDeclarada();
             tablaDeSimbolos.consolidar();
             tablaDeSimbolos.chequearCuerpos();
+
+            String codigo = tablaDeSimbolos.generarCodigo();
+            if (args.length >= 2) {
+                escribirSalida(args[1], codigo);
+            }
 
             System.out.println("Compilacion Exitosa");
             System.out.println("[SinErrores]");
@@ -52,6 +58,15 @@ public class ModuloPrincipal {
             } catch (IOException e) {
                 // Nada que hacer si falla el cierre del archivo.
             }
+        }
+    }
+
+    /** Escribe el codigo CeIASM generado en el archivo indicado. */
+    private static void escribirSalida(String ruta, String codigo) {
+        try (PrintWriter salida = new PrintWriter(ruta)) {
+            salida.print(codigo);
+        } catch (IOException e) {
+            System.out.println("No se pudo escribir el archivo de salida: " + ruta);
         }
     }
 }

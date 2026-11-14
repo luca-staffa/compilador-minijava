@@ -2,6 +2,7 @@ package analizadorsemantico.ast;
 
 import analizadorlexico.Token;
 import analizadorsemantico.ExcepcionSemantica;
+import analizadorsemantico.Generador;
 import analizadorsemantico.InfoCheck;
 import analizadorsemantico.TablaDeSimbolos;
 import analizadorsemantico.Tipo;
@@ -30,6 +31,13 @@ public abstract class NodoEncadenado {
     }
 
     public abstract InfoCheck chequear(TablaDeSimbolos ts, Tipo receptor);
+
+    /**
+     * Genera el acceso. Al entrar, el tope de la pila contiene la referencia al
+     * receptor; al salir, el valor del eslabon (o el destino, si se trata del
+     * lado izquierdo de una asignacion).
+     */
+    public abstract void generar(Generador g, boolean destino);
 
     protected static void errorEn(Token tokenDelError, String mensaje) {
         throw new ExcepcionSemantica(

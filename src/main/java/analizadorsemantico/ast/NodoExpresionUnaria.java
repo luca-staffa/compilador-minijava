@@ -1,6 +1,7 @@
 package analizadorsemantico.ast;
 
 import analizadorlexico.Token;
+import analizadorsemantico.Generador;
 import analizadorsemantico.InfoCheck;
 import analizadorsemantico.TablaDeSimbolos;
 import analizadorsemantico.Tipo;
@@ -35,4 +36,16 @@ public class NodoExpresionUnaria extends NodoExpresion {
         }
         return InfoCheck.valor(new TipoPrimitivo(TipoPrimitivo.Base.INT, operador));
     }
+
+    @Override
+    public void generar(Generador g) {
+        operando.generar(g);
+        if (operador.getNombre().equals("op!")) {
+            g.emit("NOT", "negacion logica");
+        } else if (operador.getNombre().equals("op-")) {
+            g.emit("NEG", "menos unario");
+        }
+        // El mas unario no genera instruccion.
+    }
 }
+

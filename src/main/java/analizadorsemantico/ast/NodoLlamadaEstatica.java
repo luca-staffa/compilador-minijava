@@ -5,6 +5,7 @@ import java.util.List;
 import analizadorlexico.Token;
 import analizadorsemantico.Clase;
 import analizadorsemantico.Entidad;
+import analizadorsemantico.Generador;
 import analizadorsemantico.InfoCheck;
 import analizadorsemantico.Metodo;
 import analizadorsemantico.TablaDeSimbolos;
@@ -21,6 +22,8 @@ public class NodoLlamadaEstatica extends NodoExpresion {
     private final Token tokenMetodo;
     private final Token tokenParA;
     private final List<NodoExpresion> argumentos;
+
+    private Metodo metodo;
 
     public NodoLlamadaEstatica(Token tokenClase, Token tokenPunto, Token tokenMetodo,
                                Token tokenParA, List<NodoExpresion> argumentos) {
@@ -44,18 +47,31 @@ public class NodoLlamadaEstatica extends NodoExpresion {
             errorEn(tokenClase, "la clase " + tokenClase.getLexema() + " no esta declarada");
         }
         Clase clase = (Clase) entidad;
-        Metodo metodo = clase.getMetodos().get(tokenMetodo.getLexema() + "/" + argumentos.size());
-        if (metodo == null) {
+        Metodo resuelto = clase.getMetodos().get(tokenMetodo.getLexema() + "/" + argumentos.size());
+        if (resuelto == null) {
             errorEn(tokenMetodo, "el metodo " + tokenMetodo.getLexema() + " con "
                     + argumentos.size() + " parametro(s) no fue declarado en "
                     + clase.getNombre());
         }
-        if (!metodo.esEstatico()) {
+        if (!resuelto.esEstatico()) {
             errorEn(tokenMetodo, "el metodo " + tokenMetodo.getLexema()
                     + " no es estatico y no puede invocarse con el nombre de la clase");
         }
-        chequearArgumentos(ts, metodo.getParametros(), argumentos, tokenMetodo,
+        chequearArgumentos(ts, resuelto.getParametros(), argumentos, tokenMetodo,
                 "el metodo " + tokenMetodo.getLexema());
-        return InfoCheck.llamada(metodo.getTipoRetorno());
+        metodo = resuelto;
+        return InfoCheck.llamada(resuelto.getTipoRetorno());
+    }
+
+    @Override
+    public void generar(Generador g) {
+        if (Generador.dejaValor(metodo)) {
+            g.emit("RMEM 1", "reserva la celda de retorno");
+        }
+        for (NodoExpresion argumento : argumentos) {
+            argumento.generar(g);
+        }
+        g.emit("PUSH " + metodo.getEtiqueta(), "apila el metodo " + tokenMetodo.getLexema());
+        g.emit("CALL", "llama al metodo en el tope de la pila");
     }
 }

@@ -1,6 +1,7 @@
 package analizadorsemantico.ast;
 
 import analizadorlexico.Token;
+import analizadorsemantico.Generador;
 import analizadorsemantico.InfoCheck;
 import analizadorsemantico.SemanticaUtil;
 import analizadorsemantico.TablaDeSimbolos;
@@ -37,5 +38,12 @@ public class NodoExpresionAsignacion extends NodoExpresion {
                     + tipoIzquierda.getNombre());
         }
         return InfoCheck.valor(tipoIzquierda);
+    }
+
+    @Override
+    public void generar(Generador g) {
+        derecha.generar(g);
+        g.emit("DUP", "conserva el valor asignado");
+        izquierda.generarDestino(g);
     }
 }

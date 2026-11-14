@@ -2,6 +2,7 @@ package analizadorsemantico.ast;
 
 import analizadorlexico.Token;
 import analizadorsemantico.Bloque;
+import analizadorsemantico.Generador;
 import analizadorsemantico.InfoCheck;
 import analizadorsemantico.TablaDeSimbolos;
 import analizadorsemantico.Tipo;
@@ -16,6 +17,8 @@ public class NodoVarLocal extends NodoSentencia {
     private final Token tokenVar;
     private final Token tokenNombre;
     private final NodoExpresion inicializador;
+
+    private VariableLocal variable;
 
     public NodoVarLocal(Token tokenVar, Token tokenNombre, NodoExpresion inicializador) {
         super(tokenNombre);
@@ -59,6 +62,16 @@ public class NodoVarLocal extends NodoSentencia {
         }
 
         Bloque bloque = ts.getBloqueActual();
-        bloque.agregarVariable(new VariableLocal(tokenNombre, tipo, bloque, ts));
+        variable = new VariableLocal(tokenNombre, tipo, bloque, ts);
+        bloque.agregarVariable(variable);
+    }
+
+    @Override
+    public void generar(Generador g) {
+        // La traduccion del inicializador deja su valor en la celda que ocupa la
+        // nueva variable local (el tope de la pila al comenzar la sentencia).
+        inicializador.generar(g);
+        variable.setOffset(-g.getLocalesVivas());
+        g.incLocales();
     }
 }

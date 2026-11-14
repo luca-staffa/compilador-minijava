@@ -1,6 +1,7 @@
 package analizadorsemantico.ast;
 
 import analizadorlexico.Token;
+import analizadorsemantico.Generador;
 import analizadorsemantico.InfoCheck;
 import analizadorsemantico.TablaDeSimbolos;
 
@@ -28,6 +29,21 @@ public class NodoIf extends NodoSentencia {
         if (sino != null) {
             chequearRama(sino, ts);
         }
+    }
+
+    @Override
+    public void generar(Generador g) {
+        String etiquetaElse = g.nuevaEtiqueta("lElse");
+        String etiquetaFin = g.nuevaEtiqueta("lFin");
+        condicion.generar(g);
+        g.emit("BF " + etiquetaElse, "salta si la condicion es falsa");
+        g.generarCuerpo(entonces);
+        g.emit("JUMP " + etiquetaFin);
+        g.etiqueta(etiquetaElse, "NOP");
+        if (sino != null) {
+            g.generarCuerpo(sino);
+        }
+        g.etiqueta(etiquetaFin, "NOP");
     }
 
     private void chequearRama(NodoSentencia sentencia, TablaDeSimbolos ts) {

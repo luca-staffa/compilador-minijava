@@ -1,6 +1,7 @@
 package analizadorsemantico.ast;
 
 import analizadorlexico.Token;
+import analizadorsemantico.Generador;
 import analizadorsemantico.InfoCheck;
 import analizadorsemantico.TablaDeSimbolos;
 import analizadorsemantico.TipoPrimitivo;
@@ -31,5 +32,16 @@ public class NodoExpresionPosfijo extends NodoExpresion {
                     + " solo se admite sobre operandos int");
         }
         return InfoCheck.valor(new TipoPrimitivo(TipoPrimitivo.Base.INT, operador));
+    }
+
+    @Override
+    public void generar(Generador g) {
+        boolean incremento = operador.getNombre().equals("op++");
+        // El valor de la expresion es el valor previo del operando.
+        operando.generar(g);
+        g.emit("DUP", "valor previo del operando");
+        g.emit("PUSH 1");
+        g.emit(incremento ? "ADD" : "SUB");
+        operando.generarDestino(g);
     }
 }

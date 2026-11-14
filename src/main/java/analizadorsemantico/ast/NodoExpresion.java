@@ -4,6 +4,7 @@ import java.util.List;
 
 import analizadorlexico.Token;
 import analizadorsemantico.ExcepcionSemantica;
+import analizadorsemantico.Generador;
 import analizadorsemantico.InfoCheck;
 import analizadorsemantico.Parametro;
 import analizadorsemantico.SemanticaUtil;
@@ -49,6 +50,22 @@ public abstract class NodoExpresion {
     }
 
     public abstract InfoCheck chequear(TablaDeSimbolos ts);
+
+    /**
+     * Genera el codigo CeIASM de la expresion. El resultado queda en el tope de
+     * la pila, una posicion por debajo de la posicion inicial.
+     */
+    public abstract void generar(Generador g);
+
+    /**
+     * Genera el almacenamiento de la expresion como destino de una asignacion.
+     * La pila contiene, desde el tope, el valor a asignar y una copia; el metodo
+     * consume la copia (y la referencia al receptor que corresponda) y deja el
+     * valor original en el tope.
+     */
+    public void generarDestino(Generador g) {
+        throw new IllegalStateException("la expresion no es un destino asignable");
+    }
 
     protected void error(String mensaje) {
         errorEn(token, mensaje);
