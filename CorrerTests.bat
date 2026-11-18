@@ -20,7 +20,7 @@ mkdir build\test-classes
 
 javac -cp "build\classes;lib\junit-4.13.2.jar;lib\hamcrest-core-1.3.jar" -d build\test-classes src\test\java\test\*.java || goto :error
 
-java -cp "build\classes;build\test-classes;lib\junit-4.13.2.jar;lib\hamcrest-core-1.3.jar" org.junit.runner.JUnitCore test.TesterDeCasosSinErrores test.TesterDeCasosSinErroresSemantico test.TesterDeCasosConErrores
+java -cp "build\classes;build\test-classes;lib\junit-4.13.2.jar;lib\hamcrest-core-1.3.jar" org.junit.runner.JUnitCore test.TesterDeCasosSinErrores test.TesterDeCasosConErrores
 exit /b 0
 
 :error

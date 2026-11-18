@@ -16,19 +16,23 @@ MiniJava compiler (UNS Compiladores, Etapa 5). Work happens in
   `../md/Clase 12..16 ...` and `../md/Apunte-CeIVM-2026/Apunte-CeIVM-2026.md`
   (all Spanish), plus `../CeiVM2026/readme CeIVM.txt` and
   `../CeiVM2026/rutinasHeap.txt`. `Informe_etapa5.tex` documents the stage.
-- `./CorrerTests.sh` reports `OK (183 tests)`.
+- `./CorrerTests.sh` reports `OK (189 tests)`.
 - Etapa 5 tester contract: `resources/sinErrores/` holds generation cases; each
   compiles to `[caso].out` and is executed with `CeIVM-cei2011.jar`, comparing
-  runtime output against line 1 (`///v1&v2&...&exitosamente`). The Etapa 4
-  semantic fixtures (no `main`) live in `resources/sinErroresSemantico/` and are
-  checked by `TesterDeCasosSinErroresSemantico`. `resources/conErrores/` is
-  unchanged.
+  runtime output against line 1 (`///v1&v2&...&exitosamente`). Some cases expect
+  a runtime error instead (out of bounds, negative size, null, division by zero).
+  `resources/conErrores/` holds the Etapa 5 entry-point cases plus the Etapa 4
+  semantic errors; `TesterDeCasosConErrores` invokes the compiler with a
+  temporary output file so the entry-point control runs (the Etapa 4 cases ignore
+  it and keep the same code).
+- `resources/` is only about code generation: everything compiles and runs (or
+  is a rejected program). There are no logro fixtures and no analyze-only
+  fixtures; the Etapa 4 semantic corpus was removed with its tester.
 - `CeIVM-cei2011.jar` must sit in `compilador-minijava/` for the tester (it is
   committed).
-- The external cross-check `../pruebas-etapa5/correr.py` (85 evaluated cases)
-  passes with 0 fallos; `chars` and `strings_con_escapes` are excluded as logro
-  (unicode escapes). The harness expects to live inside `compilador-minijava/`
-  (symlink or copy `pruebas-etapa5/` there to run it).
+- The external cross-check `../TESTERS EXTERNOS FILTRADOS/correr.py` (85 cases,
+  Etapa 5 base only) passes with 0 fallos; `chars` and `strings_con_escapes` are
+  excluded as logro (unicode escapes).
 - Etapa 5 also covers the Apunte's base requirements beyond raw generation:
   entry-point control (`static void main()`), array bounds/size checks, String
   literals as heap objects, `Object.toString` at VT offset 0, generic virtual
@@ -41,7 +45,7 @@ MiniJava compiler (UNS Compiladores, Etapa 5). Work happens in
 - `java -jar Compilador.jar <fuente> [<salida>]` — accepts any file extension;
   without `<salida>` it only analyzes.
 - `java -jar CeIVM-cei2011.jar <salida>` — runs the generated code.
-- `./CorrerTests.sh` — builds, compiles testers, runs the three JUnit classes.
+- `./CorrerTests.sh` — builds, compiles testers, runs the two JUnit classes.
   First run needs `curl` to download JUnit/Hamcrest into `lib/`.
 - Single case: compare the compiler stdout (`[SinErrores]` or `[Error:...]`) and,
   for generation cases, run the CeIVM on `[caso].out`. JUnitCore cannot select

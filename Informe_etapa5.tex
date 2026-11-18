@@ -283,20 +283,20 @@ Se incluyen:
   \item los cuatro casos provistos por la cátedra (\texttt{gen-01} a
         \texttt{gen-04}), que se ejecutan con la CeIVM y comparan su salida;
   \item una batería propia de casos de generación (\texttt{gen-05} a
-        \texttt{gen-33}) que cubren expresiones, variables locales,
+        \texttt{gen-108}) que cubren expresiones, variables locales,
         parámetros, aritmética, lógica, atributos, herencia, interfaces
         (simples y extendidas), constructores, \texttt{new}, arreglos
-        unidimensionales y bidimensionales, encadenados, strings, caracteres,
+        unidimensionales y multidimensionales, encadenados, strings, caracteres,
         \texttt{if}, \texttt{while}, \texttt{return}, recursividad, llamadas
-        estáticas, de instancia e implícitas, \texttt{this} y postfijos;
-  \item los casos sin errores de las etapas anteriores
-        (\texttt{resources/sinErroresSemantico/}), que solo se compilan sin
-        errores porque no declaran un \texttt{main};
-  \item los casos con errores de las etapas anteriores
-        (\texttt{resources/conErrores/}).
+        estáticas, de instancia e implícitas, \texttt{this}, genéricos y
+        despacho dinámico, además de los errores de ejecución (índice fuera de
+        rango, tamaño negativo, referencia nula y división por cero);
+  \item los casos del punto de entrada de la etapa y los errores semánticos de
+        las etapas anteriores (\texttt{resources/conErrores/}), que deben
+        rechazarse.
 \end{itemize}
 
-El resultado de la ejecución de \texttt{./CorrerTests.sh} es \textbf{OK (183
+El resultado de la ejecución de \texttt{./CorrerTests.sh} es \textbf{OK (189
 tests)}. Los casos de generación se ejecutan con la CeIVM desde el tester: por
 cada caso se genera \texttt{[caso].out} y se compara la salida de la máquina
 virtual con la indicada en la primera línea del archivo fuente (formato

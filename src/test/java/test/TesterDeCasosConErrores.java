@@ -1,6 +1,7 @@
 package test;
 
 import java.io.*;
+import java.nio.file.Files;
 import java.util.ArrayList;
 
 import moduloprincipal.ModuloPrincipal;
@@ -60,7 +61,16 @@ public class TesterDeCasosConErrores {
     private void probarFallo(String name) {
         String testCaseFilePath = testFilesDirectoryPath+name;
         String errorCode = getErrorCode(testCaseFilePath);
-        String[] args = {testCaseFilePath};
+        // Los casos de la Etapa 5 del punto de entrada (main) exigen el archivo
+        // de salida: el control solo corre cuando se genera codigo. Los casos de
+        // las etapas anteriores lo ignoran y siguen dando el mismo codigo.
+        String archivoSalida;
+        try {
+            archivoSalida = Files.createTempFile("test-compilador-", ".out").toString();
+        } catch (IOException e) {
+            throw new RuntimeException("No se pudo crear el archivo de salida temporal", e);
+        }
+        String[] args = {testCaseFilePath, archivoSalida};
         init.main(args);
 
         if(fullCompilerOuputPrintingInEachTest){

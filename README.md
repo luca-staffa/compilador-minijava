@@ -163,17 +163,25 @@ javac -cp "build/classes:lib/junit-4.13.2.jar:lib/hamcrest-core-1.3.jar" \
 
 java -cp "build/classes:build/test-classes:lib/junit-4.13.2.jar:lib/hamcrest-core-1.3.jar" \
   org.junit.runner.JUnitCore test.TesterDeCasosSinErrores \
-  test.TesterDeCasosSinErroresSemantico test.TesterDeCasosConErrores
+  test.TesterDeCasosConErrores
 ```
 
 Los testers de generación recorren `resources/sinErrores/`: para cada caso
 generan el archivo `[caso].out` con el compilador y lo ejecutan con la CeIVM,
 comparando la salida de ejecución con la que indica la primera línea del archivo
 (con el formato `///valor1&valor2&...&exitosamente`, igual que el tester de la
-cátedra). `resources/sinErroresSemantico/` reúne los casos de las etapas
-anteriores (sin `main`) que solo deben compilarse sin errores. Los casos de
+cátedra). Algunos casos esperan en cambio un error de ejecución (índice fuera de
+rango, tamaño negativo, referencia nula, división por cero). Los casos de
 `resources/conErrores/` deben rechazarse; la primera línea del archivo lleva el
-código esperado con el formato `//[Error:lexema|nroLinea]`.
+código esperado con el formato `//[Error:lexema|nroLinea]`. El tester los invoca
+con un archivo de salida temporal, porque los casos del punto de entrada de la
+Etapa 5 (`main`) solo se controlan cuando se genera código.
+
+Los casos de `resources/` prueban sólo la generación de código: todos se
+compilan y se ejecutan en la CeIVM (o son programas que deben rechazarse,
+incluidos los del punto de entrada). No hay casos de sólo análisis, ni fixtures
+que usen construcciones de logro. El corpus externo se importó ya filtrado (ver
+`../TESTERS EXTERNOS FILTRADOS/`).
 
 Para agregar un caso basta con crear el archivo en la carpeta correspondiente;
 los testers lo incorporan automáticamente.
