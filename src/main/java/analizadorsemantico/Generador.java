@@ -545,13 +545,16 @@ public class Generador {
             if (nombre.equals("debugPrint")) {
                 emit("LOAD 3", "apila el parametro");
                 emit("IPRINT", "imprime el entero en el tope de la pila");
+                emit("PRNLN", "finaliza la linea");
             } else if (nombre.equals("toString")) {
                 generarString("");
                 emit("STORE 4");
             }
         } else if (nombreClase.equals("System")) {
             if (nombre.equals("read")) {
-                emit("READ", "lee un valor entero");
+                emit("READ", "lee el proximo byte de la entrada");
+                emit("PUSH 48", "convierte el digito ASCII a su valor entero");
+                emit("SUB");
                 emit("STORE 3");
             } else if (nombre.equals("println")) {
                 emit("PRNLN", "imprime el caracter de nueva linea");
