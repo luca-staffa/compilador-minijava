@@ -103,7 +103,7 @@ public class NodoNewArreglo extends NodoExpresion {
         g.emit("PUSH simple_malloc");
         g.emit("CALL");
         g.emit("DUP");
-        g.emit("PUSH lblVTObject", "VT del arreglo");
+        g.emit("PUSH " + Generador.etiquetaVT("Object"), "VT del arreglo");
         g.emit("STOREREF 0");
         g.emit("DUP");
         g.emit("LOAD " + dimTemp[nivel]);

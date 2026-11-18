@@ -354,9 +354,36 @@ public class Generador {
 
     public static String etiquetaUnidad(Unidad unidad, String nombreClase) {
         if (unidad instanceof Constructor) {
-            return "lblConstructor_" + unidad.getAridad() + "@" + nombreClase;
+            return "lblConstructor_" + unidad.getAridad() + "@" + codificarNombre(nombreClase);
         }
-        return "lblMet" + unidad.getNombre() + "_" + unidad.getAridad() + "@" + nombreClase;
+        return "lblMet" + codificarNombre(unidad.getNombre()) + "_" + unidad.getAridad()
+                + "@" + codificarNombre(nombreClase);
+    }
+
+    /** Etiqueta de la tabla virtual de una clase. */
+    public static String etiquetaVT(String nombreClase) {
+        return "lblVT" + codificarNombre(nombreClase);
+    }
+
+    /**
+     * Codifica un nombre para usarlo en una etiqueta CeIASM. El lenguaje no
+     * distingue mayusculas de minusculas, por lo que dos nombres que solo
+     * difieren en el casing (por ejemplo getX y getx) colisionarian. Se marca
+     * cada letra mayuscula con un {@code $}, simbolo que no puede aparecer en un
+     * identificador MiniJava (y si es valido en una etiqueta CeIASM). Asi la
+     * codificacion es inyectiva incluso al ignorar el casing y la etiqueta
+     * resultante sigue siendo un identificador valido.
+     */
+    public static String codificarNombre(String nombre) {
+        StringBuilder sb = new StringBuilder();
+        for (int i = 0; i < nombre.length(); i++) {
+            char c = nombre.charAt(i);
+            if (c >= 'A' && c <= 'Z') {
+                sb.append('$');
+            }
+            sb.append(c);
+        }
+        return sb.toString();
     }
 
     // ------------------------------------------------------------------
@@ -443,7 +470,7 @@ public class Generador {
     private void generarClase(Clase clase) {
         vacia();
         cruda(".DATA");
-        etiqueta("lblVT" + clase.getNombre());
+        etiqueta(etiquetaVT(clase.getNombre()));
         cruda("\tDW " + etiquetasVt(vtClase(clase)));
         cruda(".CODE");
         for (Constructor constructor : clase.getConstructores().values()) {
@@ -567,7 +594,7 @@ public class Generador {
         emit("PUSH simple_malloc");
         emit("CALL");
         emit("DUP");
-        emit("PUSH lblVTString", "VT del String");
+        emit("PUSH " + etiquetaVT("String"), "VT del String");
         emit("STOREREF 0");
         emit("DUP");
         emit("PUSH " + n);

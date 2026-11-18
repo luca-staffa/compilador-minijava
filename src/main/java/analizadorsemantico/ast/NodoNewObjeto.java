@@ -88,7 +88,7 @@ public class NodoNewObjeto extends NodoExpresion {
         g.emit("PUSH simple_malloc", "reserva memoria en el heap");
         g.emit("CALL");
         g.emit("DUP", "conserva la referencia al objeto");
-        g.emit("PUSH lblVT" + clase.getNombre(), "apila la tabla virtual de la clase");
+        g.emit("PUSH " + Generador.etiquetaVT(clase.getNombre()), "apila la tabla virtual de la clase");
         g.emit("STOREREF 0", "inicializa la referencia a la VT");
         g.emit("DUP");
         for (NodoExpresion argumento : argumentos) {

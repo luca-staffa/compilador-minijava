@@ -4,6 +4,7 @@ Compilador.jar
 
 # Dependencias de test (CorrerTests.sh las descarga en lib/)
 lib/
+docs/
 
 # Auxiliares de LaTeX
 *.aux

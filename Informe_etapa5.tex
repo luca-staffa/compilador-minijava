@@ -149,6 +149,15 @@ los métodos y \texttt{lblConstructor\_<aridad>@<Clase>} para los constructores,
 de modo que una redefinición conserva la etiqueta de la versión declarada en cada
 clase.
 
+El lenguaje CeIASM no distingue mayúsculas de minúsculas, por lo que dos nombres
+que sólo difieren en el \emph{casing} (por ejemplo \texttt{getX} y \texttt{getx}
+en una misma clase, o las clases \texttt{Foo} y \texttt{FOO}) producirían
+etiquetas colisionantes. Para evitarlo, todo nombre se codifica anteponiendo un
+\texttt{\$} a cada letra mayúscula antes de formar la etiqueta (también la de la
+VT, \texttt{lblVT<Clase>}). El \texttt{\$} no puede aparecer en un identificador
+MiniJava y sí es válido en una etiqueta CeIASM, de modo que la codificación es
+inyectiva aun ignorando el casing.
+
 \section{Estructura del código generado}
 
 El programa CeIASM generado tiene la siguiente estructura:
@@ -195,7 +204,8 @@ literal string & construcción del String en el \texttt{.heap} \\
 variable local / parámetro & \texttt{LOAD off} \\
 atributo & \texttt{LOAD 3; LOADREF off} \\
 \texttt{this} & \texttt{LOAD 3} \\
-binaria & código de los hijos + ADD/SUB/MUL/DIV/MOD/LT/GT/LE/GE/AND/OR/EQ/NE \\
+binaria & código de los hijos + ADD/SUB/MUL/DIV/MOD/LT/GT/LE/GE/EQ/NE \\
+\texttt{\&\&} y \texttt{||} & cortocircuito con BF/BT y normalización a 1/0 \\
 unaria & \texttt{NEG} / \texttt{NOT} (el + no genera instrucción) \\
 \texttt{a.length} & código de \texttt{a} + \texttt{LOADREF 1} \\
 \texttt{a[i]} & código de \texttt{a} y de \texttt{i}, control de rango, \texttt{ADD}, \texttt{LOADREF 2} \\
@@ -283,7 +293,7 @@ Se incluyen:
   \item los cuatro casos provistos por la cátedra (\texttt{gen-01} a
         \texttt{gen-04}), que se ejecutan con la CeIVM y comparan su salida;
   \item una batería propia de casos de generación (\texttt{gen-05} a
-        \texttt{gen-108}) que cubren expresiones, variables locales,
+        \texttt{gen-110}) que cubren expresiones, variables locales,
         parámetros, aritmética, lógica, atributos, herencia, interfaces
         (simples y extendidas), constructores, \texttt{new}, arreglos
         unidimensionales y multidimensionales, encadenados, strings, caracteres,
@@ -296,7 +306,7 @@ Se incluyen:
         rechazarse.
 \end{itemize}
 
-El resultado de la ejecución de \texttt{./CorrerTests.sh} es \textbf{OK (189
+El resultado de la ejecución de \texttt{./CorrerTests.sh} es \textbf{OK (191
 tests)}. Los casos de generación se ejecutan con la CeIVM desde el tester: por
 cada caso se genera \texttt{[caso].out} y se compara la salida de la máquina
 virtual con la indicada en la primera línea del archivo fuente (formato

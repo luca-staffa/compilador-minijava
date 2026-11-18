@@ -16,7 +16,7 @@ MiniJava compiler (UNS Compiladores, Etapa 5). Work happens in
   `../md/Clase 12..16 ...` and `../md/Apunte-CeIVM-2026/Apunte-CeIVM-2026.md`
   (all Spanish), plus `../CeiVM2026/readme CeIVM.txt` and
   `../CeiVM2026/rutinasHeap.txt`. `Informe_etapa5.tex` documents the stage.
-- `./CorrerTests.sh` reports `OK (189 tests)`.
+- `./CorrerTests.sh` reports `OK (191 tests)`.
 - Etapa 5 tester contract: `resources/sinErrores/` holds generation cases; each
   compiles to `[caso].out` and is executed with `CeIVM-cei2011.jar`, comparing
   runtime output against line 1 (`///v1&v2&...&exitosamente`). Some cases expect

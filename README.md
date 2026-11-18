@@ -21,6 +21,12 @@ control del punto de entrada (`static void main()`), el control en ejecución de
 índices y tamaños de arreglos, la construcción de Strings en el `.heap` y el
 despacho virtual genérico.
 
+`&&` y `||` se generan con **cortocircuito** (el operando derecho no se evalúa
+cuando el izquierdo ya decide el resultado) y el resultado se normaliza a 1/0.
+Las etiquetas CeIASM se forman codificando cada nombre con un `$` delante de cada
+letra mayúscula, porque el lenguaje de la CeIVM no distingue mayúsculas de
+minúsculas: así `getX` y `getx` (o las clases `Foo` y `FOO`) no colisionan.
+
 Cuando se pide un archivo de salida, el compilador exige exactamente un método
 `static void main()` sin parámetros: si falta (o no tiene esa forma) reporta
 `[Error:$|línea]` y si hay más de uno, `[Error:main|línea]` sobre el segundo. Si
