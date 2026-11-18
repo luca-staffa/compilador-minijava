@@ -34,6 +34,12 @@ public class ModuloPrincipal {
             tablaDeSimbolos.consolidar();
             tablaDeSimbolos.chequearCuerpos();
 
+            // El punto de entrada solo es exigible cuando se genera codigo.
+            if (args.length >= 2) {
+                tablaDeSimbolos.chequearPuntoDeEntrada(
+                        analizadorSintactico.getTokenEOF().getNroLinea());
+            }
+
             String codigo = tablaDeSimbolos.generarCodigo();
             if (args.length >= 2) {
                 escribirSalida(args[1], codigo);

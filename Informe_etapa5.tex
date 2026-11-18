@@ -30,7 +30,9 @@ declaraciones y las sentencias, el compilador calcule los desplazamientos en los
 registros de activación, en los CIR y en las tablas virtuales, recorra la Tabla de
 Símbolos y los AST y emita el programa en código intermedio CeIASM que ejecuta la
 máquina virtual CeIVM. El módulo principal escribe ese código en un archivo de
-salida cuyo nombre indica el usuario. No se implementan logros de la etapa.
+salida cuyo nombre indica el usuario. La generación cubre, además, los controles
+y representaciones que el apunte de la CeIVM exige para la semántica base
+(punto de entrada, arreglos y Strings). No se implementan logros de la etapa.
 
 \section{Objetivo y logros}
 
@@ -43,6 +45,11 @@ salida cuyo nombre indica el usuario. No se implementan logros de la etapa.
   \item Agregar al módulo principal la generación del archivo de salida con el
         código intermedio, cuyo nombre recibe por parámetro, y mantener el
         reporte de errores y el mensaje \texttt{[SinErrores]}.
+  \item Controlar el punto de entrada cuando se genera código: exactamente un
+        método \texttt{static void main()} sin parámetros.
+  \item Emitir los controles en tiempo de ejecución que el apunte exige para los
+        arreglos (índice fuera de rango y tamaño negativo) y representar los
+        Strings como objetos del \texttt{.heap}.
 \end{itemize}
 
 Se mantienen los logros de etapas anteriores que siguen vigentes (atributos
@@ -50,8 +57,8 @@ inicializados, operadores posfijos, visibilidad mejorada, manejo de archivos
 eficiente y genericidad avanzada de las Etapas 2 y 3). \textbf{No se intentan
 logros de la Etapa 5}: no se implementan floats ni coerción, \texttt{for},
 ternario, \texttt{super}, herencia múltiple de interfaces, \texttt{toString} real
-ni minilambdas. Tampoco se implementa la detección de errores en tiempo de
-ejecución de arreglos (control de índices y de tamaños negativos).
+ni minilambdas. La sintaxis de escapes \texttt{\textbackslash uXXXX} tampoco se
+resuelve (logro de la Etapa 1).
 
 \section{Esquema general}
 
@@ -60,8 +67,9 @@ Como en la Etapa 4, asocia el fuente al manejador de archivos y este al léxico,
 crea la \texttt{TablaDeSimbolos} y el \texttt{AnalizadorSintactico}, y dispara el
 análisis. Al finalizar el parseo ejecuta el chequeo de declaraciones
 (\texttt{estaBienDeclarada}), la consolidación (\texttt{consolidar}) y el chequeo
-de cuerpos (\texttt{chequearCuerpos}). Si no hubo errores, solicita a la tabla el
-código generado (\texttt{generarCodigo}), lo escribe en el archivo de salida y
+de cuerpos (\texttt{chequearCuerpos}). Si se pidió un archivo de salida, controla
+el punto de entrada (\texttt{chequearPuntoDeEntrada}) y luego solicita a la tabla
+el código generado (\texttt{generarCodigo}), lo escribe en el archivo de salida y
 reporta el éxito. Ante un error léxico, sintáctico o semántico reporta el mensaje
 y el código de error y finaliza.
 
@@ -147,10 +155,14 @@ El programa CeIASM generado tiene la siguiente estructura:
 
 \begin{enumerate}
   \item \textbf{Entry point.} Bajo \texttt{.CODE}: la llamada a
-        \texttt{simple\_heap\_init}, la llamada al método \texttt{main} (si el
-        programa lo declara) y la instrucción \texttt{HALT}.
+        \texttt{simple\_heap\_init}, la llamada al método \texttt{main} y la
+        instrucción \texttt{HALT}.
   \item \textbf{Rutinas de gestión del heap.} \texttt{simple\_heap\_init} y
         \texttt{simple\_malloc}, tomadas del esquema simplificado del apunte.
+  \item \textbf{Rutinas de error.} \texttt{lErrorIndice} y
+        \texttt{lErrorTamanio} imprimen con \texttt{SPRINT} el mensaje
+        correspondiente y ejecutan \texttt{HALT}; los mensajes se reservan en
+        \texttt{.DATA}.
   \item \textbf{Por cada clase}: en \texttt{.DATA} su tabla virtual
         (\texttt{lblVT<Clase>: DW ...}), que contiene las etiquetas de los métodos
         de instancia en el orden de la VT; y bajo \texttt{.CODE} el código de su
@@ -160,9 +172,9 @@ El programa CeIASM generado tiene la siguiente estructura:
         métodos (\texttt{debugPrint} con \texttt{IPRINT}, \texttt{toString},
         \texttt{read} con \texttt{READ}, \texttt{printB/C/I/S},
         \texttt{println} y sus variantes con salto de línea).
-  \item \textbf{Strings literales.} Bajo \texttt{.DATA}, como
-        \texttt{lblStr<n>: DW c0, c1, ..., 0}; el literal se traduce apilando su
-        dirección para \texttt{SPRINT}.
+  \item \textbf{Strings literales.} No se guardan en \texttt{.DATA}: cada
+        evaluación construye en el \texttt{.heap} un bloque
+        \texttt{[VT, longitud, caracteres..., 0]} y deja su referencia en la pila.
 \end{enumerate}
 
 \section{Traducciones}
@@ -179,14 +191,14 @@ unidades estáticas y $n+1$ en unidades de instancia y constructores).
 Construcción & Código \\
 \hline
 literal int/char/bool/null & \texttt{PUSH k} (char a ASCII, bool a 1/0, null a 0) \\
-literal string & \texttt{PUSH lblStr<n>} \\
+literal string & construcción del String en el \texttt{.heap} \\
 variable local / parámetro & \texttt{LOAD off} \\
 atributo & \texttt{LOAD 3; LOADREF off} \\
 \texttt{this} & \texttt{LOAD 3} \\
 binaria & código de los hijos + ADD/SUB/MUL/DIV/MOD/LT/GT/LE/GE/AND/OR/EQ/NE \\
 unaria & \texttt{NEG} / \texttt{NOT} (el + no genera instrucción) \\
 \texttt{a.length} & código de \texttt{a} + \texttt{LOADREF 1} \\
-\texttt{a[i]} & código de \texttt{a}, de \texttt{i}, \texttt{ADD}, \texttt{LOADREF 2} \\
+\texttt{a[i]} & código de \texttt{a} y de \texttt{i}, control de rango, \texttt{ADD}, \texttt{LOADREF 2} \\
 asignación & código del lado derecho, \texttt{DUP}, destino \\
 \texttt{new C(args)} & \texttt{RMEM 1; PUSH k; PUSH simple\_malloc; CALL; DUP;} \\
  & \texttt{PUSH lblVT<C>; STOREREF 0; DUP;} args con \texttt{SWAP}; \\
@@ -209,8 +221,23 @@ CIR; la asignación a un atributo reevalúa el receptor, \texttt{SWAP} y
 \texttt{STOREREF}. En los métodos de instancia la referencia al receptor forma
 parte del RA (desplazamiento 3). Los arreglos se representan como objetos del
 heap con la VT de \texttt{Object} en el desplazamiento 0 y la longitud en el 1.
-Los arreglos multidimensionales (hasta dos dimensiones) se construyen con celdas
-temporales del RA para conservar los tamaños y un ciclo que crea cada subarreglo.
+
+Cada unidad reserva al entrar un conjunto fijo de celdas temporales
+(\texttt{RMEM TAM\_POOL}) que el generador entrega con
+\texttt{reservarTemporal}/\texttt{liberarTemporal}. Al tener un desplazamiento
+fijo en el RA, estas celdas sirven aunque la pila de expresiones no esté vacía
+(por ejemplo, al crear un arreglo como argumento). Los arreglos de cualquier
+cantidad de dimensiones se construyen evaluando y controlando primero todos los
+tamaños y recorriendo luego, con un ciclo anidado por dimensión, las componentes
+de cada nivel para alojar los subarreglos.
+
+El acceso a una componente controla el índice negativo y el índice mayor o igual
+que la longitud (y la referencia nula, al leer la longitud con \texttt{LOADREF
+1}); si falla, salta a \texttt{lErrorIndice}. La creación controla cada dimensión
+negativa y salta a \texttt{lErrorTamanio}. Los literales String se construyen en
+el \texttt{.heap} en cada evaluación, de modo que dos literales iguales son
+objetos distintos; \texttt{System.printS*} suma el desplazamiento 2 antes de
+\texttt{SPRINT}.
 
 \section{Formato de salida}
 
@@ -269,7 +296,7 @@ Se incluyen:
         (\texttt{resources/conErrores/}).
 \end{itemize}
 
-El resultado de la ejecución de \texttt{./CorrerTests.sh} es \textbf{OK (179
+El resultado de la ejecución de \texttt{./CorrerTests.sh} es \textbf{OK (183
 tests)}. Los casos de generación se ejecutan con la CeIVM desde el tester: por
 cada caso se genera \texttt{[caso].out} y se compara la salida de la máquina
 virtual con la indicada en la primera línea del archivo fuente (formato
@@ -279,9 +306,10 @@ virtual con la indicada en la primera línea del archivo fuente (formato
 
 No se implementaron los logros de la etapa: floats y coerción (concatenación de
 strings incluida), \texttt{for} clásico y de iteradores, ternario, \texttt{super},
-herencia múltiple de interfaces, \texttt{toString} real, minilambdas ni la
-detección de errores en tiempo de ejecución de arreglos. La sintaxis aceptada
-sigue siendo la de las etapas anteriores; la generación cubre la semántica base de
-MiniJava.
+herencia múltiple de interfaces, \texttt{toString} real ni minilambdas. La
+sintaxis aceptada sigue siendo la de las etapas anteriores (tampoco se resuelven
+los escapes \texttt{\textbackslash uXXXX}); la generación cubre la semántica base
+de MiniJava, incluidos el punto de entrada, los controles de arreglos y la
+representación de Strings del apunte.
 
 \end{document}

@@ -176,6 +176,7 @@ public class AnalizadorSintactico {
     private final AnalizadorLexico analizadorLexico;
     private final TablaDeSimbolos tablaDeSimbolos;
     private Token tokenActual;
+    private Token tokenEOF;
 
     public AnalizadorSintactico(AnalizadorLexico analizadorLexico, TablaDeSimbolos tablaDeSimbolos) {
         this.analizadorLexico = analizadorLexico;
@@ -222,9 +223,15 @@ public class AnalizadorSintactico {
         return primeros.contains(tokenActual.getNombre());
     }
 
+    /** Token de fin de archivo, con la linea en la que termina la fuente. */
+    public Token getTokenEOF() {
+        return tokenEOF;
+    }
+
     // <Inicial> ::= <ListaClases> eof
     private void inicial() throws IOException {
         listaClases();
+        tokenEOF = tokenActual;
         match("EOF");
     }
 

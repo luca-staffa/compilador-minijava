@@ -16,7 +16,7 @@ MiniJava compiler (UNS Compiladores, Etapa 5). Work happens in
   `../md/Clase 12..16 ...` and `../md/Apunte-CeIVM-2026/Apunte-CeIVM-2026.md`
   (all Spanish), plus `../CeiVM2026/readme CeIVM.txt` and
   `../CeiVM2026/rutinasHeap.txt`. `Informe_etapa5.tex` documents the stage.
-- `./CorrerTests.sh` reports `OK (179 tests)`.
+- `./CorrerTests.sh` reports `OK (183 tests)`.
 - Etapa 5 tester contract: `resources/sinErrores/` holds generation cases; each
   compiles to `[caso].out` and is executed with `CeIVM-cei2011.jar`, comparing
   runtime output against line 1 (`///v1&v2&...&exitosamente`). The Etapa 4
@@ -25,6 +25,14 @@ MiniJava compiler (UNS Compiladores, Etapa 5). Work happens in
   unchanged.
 - `CeIVM-cei2011.jar` must sit in `compilador-minijava/` for the tester (it is
   committed).
+- The external cross-check `../pruebas-etapa5/correr.py` (85 evaluated cases)
+  passes with 0 fallos; `chars` and `strings_con_escapes` are excluded as logro
+  (unicode escapes). The harness expects to live inside `compilador-minijava/`
+  (symlink or copy `pruebas-etapa5/` there to run it).
+- Etapa 5 also covers the Apunte's base requirements beyond raw generation:
+  entry-point control (`static void main()`), array bounds/size checks, String
+  literals as heap objects, `Object.toString` at VT offset 0, generic virtual
+  dispatch and arrays of any number of dimensions.
 
 ## Commands
 
@@ -45,16 +53,27 @@ MiniJava compiler (UNS Compiladores, Etapa 5). Work happens in
 
 - Entrypoint/manifest main: `moduloprincipal.ModuloPrincipal`. Flow: open file
   -> lexer -> parser (also fills the TS and builds ASTs) -> `estaBienDeclarada()`
-  -> `consolidar()` -> `chequearCuerpos()` -> `generarCodigo()` -> write output.
+  -> `consolidar()` -> `chequearCuerpos()` -> (if an output file was given)
+  `chequearPuntoDeEntrada()` -> `generarCodigo()` -> write output.
 - AST nodes live in `analizadorsemantico/ast/`; expressions expose
   `InfoCheck chequear(ts)` and `void generar(g)`, sentences `void chequear(ts)`
   and `void generar(g)`. Chained accesses add `generar(g, destino)`. The check
   pass also records resolved entities (offsets, methods, constructors) that the
-  generation pass uses.
+  generation pass uses. For generic receivers the node keeps the *declared*
+  method (not the instantiated view) so generation sees the VT offset/etiqueta.
 - `analizadorsemantico.Generador` centralizes line/label buffers, the unit
-  context (arity, static, return offset, live locals), `calcularOffsets()` (CIR,
-  VT, RA) and the full program emission (entry point, heap routines, VTs, units,
-  predefinidas, string literals).
+  context (arity, static, return offset, live locals, scratch pool),
+  `calcularOffsets()` (CIR, VT, RA) and the full program emission (entry point,
+  heap routines, error routines, VTs, units, predefinidas, String literals).
+- `reservarTemporal()`/`liberarTemporal()` hand out cells from a fixed pool
+  reserved at unit entry (`RMEM TAM_POOL`), so temporaries are valid even when
+  the expression stack is not empty (array dimensions, indices).
+- Array access emits inline bounds checks (negative and `>= length`) that jump
+  to `lErrorIndice`; `new` checks every dimension for a negative size and jumps
+  to `lErrorTamanio`. Both routines print a message with `SPRINT` and `HALT`.
+- String literals are built in the `.heap` at each evaluation (`generarString`),
+  as `[VT, length, chars..., 0]`; `System.printS*` adds the offset 2 before
+  `SPRINT`. `Object.toString` builds the empty String the same way.
 - New source packages must be added to the `javac` line in both `Compilar.sh`
   and `Compilar.bat` (they glob `src/main/java/<pkg>/*.java`).
 - Keep identifiers, comments, and error messages in Spanish (e.g.
@@ -67,7 +86,10 @@ MiniJava compiler (UNS Compiladores, Etapa 5). Work happens in
   MiniJava-only exception that keeps the original parameter.
 - Constructors do not implicitly call a super constructor; no method is required
   to return on every path and unreachable code is not rejected.
-- `main` is not required (Etapas 3-4); Etapa 5 generation calls it when present.
+- `main` is not required when only analyzing (no output file, Etapas 3-4). When
+  an output file is given, exactly one `static void main()` must exist: missing
+  or malformed gives `[Error:$|<lineaEOF>]`, duplicated gives `[Error:main|<n>]`
+  on the second one.
 - `null` and `void` have special rules. Assignment and "usable as a call
   statement" are independent of type. A parenthesized expression keeps its type
   but not the structural traits of its contents.

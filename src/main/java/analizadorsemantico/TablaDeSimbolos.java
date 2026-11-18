@@ -194,6 +194,43 @@ public class TablaDeSimbolos {
         }
     }
 
+    /**
+     * Controla el punto de entrada del programa. Todo programa MiniJava debe
+     * declarar exactamente un metodo {@code static void main()} sin parametros
+     * en alguna clase. Si falta, el error se reporta en el fin de archivo; si
+     * hay mas de uno, en el token del segundo.
+     */
+    public void chequearPuntoDeEntrada(int lineaEOF) {
+        Metodo puntoDeEntrada = null;
+        for (Clase clase : clases.values()) {
+            for (Unidad unidad : clase.getUnidadesPropias()) {
+                if (!esPuntoDeEntrada(unidad)) {
+                    continue;
+                }
+                if (puntoDeEntrada == null) {
+                    puntoDeEntrada = (Metodo) unidad;
+                } else {
+                    throw new ExcepcionSemantica(
+                            unidad.getToken().getLexema(),
+                            unidad.getToken().getNroLinea(),
+                            "el metodo main ya fue declarado");
+                }
+            }
+        }
+        if (puntoDeEntrada == null) {
+            throw new ExcepcionSemantica(
+                    "$", lineaEOF, "no se encontro el metodo static void main()");
+        }
+    }
+
+    private static boolean esPuntoDeEntrada(Unidad unidad) {
+        return unidad instanceof Metodo
+                && unidad.getNombre().equals("main")
+                && unidad.getAridad() == 0
+                && unidad.esEstatico()
+                && ((Metodo) unidad).getTipoRetorno() instanceof TipoVoid;
+    }
+
     // ------------------------------------------------------------------
     // Entidades predefinidas
     // ------------------------------------------------------------------

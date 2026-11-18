@@ -61,7 +61,9 @@ public class NodoEncadenadoLlamada extends NodoEncadenado {
             Metodo vista = resuelto.instanciar(sustitucion);
             NodoExpresion.chequearArgumentos(ts, vista.getParametros(), argumentos,
                     tokenNombre, "el metodo " + nombre);
-            metodo = vista;
+            // Se conserva el metodo declarado (no la vista instanciada) porque el
+            // generador fija su offset y su etiqueta al calcular las VTs.
+            metodo = resuelto;
             tipoRetorno = vista.getTipoRetorno();
         } else {
             errorEn(token, "no se puede invocar el metodo " + nombre

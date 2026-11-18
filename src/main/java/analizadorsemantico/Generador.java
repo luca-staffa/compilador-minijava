@@ -16,6 +16,23 @@ import analizadorsemantico.ast.NodoSentencia;
  */
 public class Generador {
 
+    /** Etiquetas de las rutinas de error en tiempo de ejecucion. */
+    public static final String ETIQUETA_ERROR_INDICE = "lErrorIndice";
+    public static final String ETIQUETA_ERROR_TAMANIO = "lErrorTamanio";
+
+    /** Mensajes de error en tiempo de ejecucion. */
+    public static final String MENSAJE_ERROR_INDICE =
+            "Error en tiempo de ejecucion: indice fuera de rango";
+    public static final String MENSAJE_ERROR_TAMANIO =
+            "Error en tiempo de ejecucion: tamanio de arreglo negativo";
+
+    /**
+     * Celdas temporales reservadas al comienzo de cada unidad. Se usan para
+     * conservar valores intermedios (dimensiones de arreglos, indices) sin
+     * depender de la posicion del tope de la pila.
+     */
+    private static final int TAM_POOL = 16;
+
     private final TablaDeSimbolos ts;
     private final List<String> lineas = new ArrayList<>();
     private final Map<String, String> literales = new LinkedHashMap<>();
@@ -30,6 +47,7 @@ public class Generador {
     private boolean estatico;
     private int offsetRetorno;
     private int localesVivas;
+    private int poolLibres;
 
     public Generador(TablaDeSimbolos ts) {
         this.ts = ts;
@@ -82,6 +100,10 @@ public class Generador {
         this.estatico = u.esEstatico();
         this.offsetRetorno = estatico ? aridad + 3 : aridad + 4;
         this.localesVivas = 0;
+        this.poolLibres = 0;
+        emit("RMEM " + TAM_POOL, "reserva celdas temporales");
+        this.localesVivas = TAM_POOL;
+        this.poolLibres = TAM_POOL;
     }
 
     public Unidad getUnidadActual() {
@@ -116,12 +138,28 @@ public class Generador {
         this.localesVivas++;
     }
 
-    /** Reserva una celda temporal en el RA y devuelve su offset. */
+    /**
+     * Reserva una celda temporal del pool de la unidad y devuelve su offset.
+     * Las celdas del pool ya estan reservadas en el RA, por lo que no dependen
+     * de la posicion del tope de la pila.
+     */
     public int reservarTemporal() {
+        if (poolLibres > 0) {
+            int offset = -(TAM_POOL - poolLibres);
+            poolLibres--;
+            return offset;
+        }
         int offset = -localesVivas;
         localesVivas++;
         emit("RMEM 1", "celda temporal");
         return offset;
+    }
+
+    /** Libera la ultima celda temporal reservada del pool. */
+    public void liberarTemporal() {
+        if (poolLibres < TAM_POOL) {
+            poolLibres++;
+        }
     }
 
     public boolean esConstructor() {
@@ -289,7 +327,12 @@ public class Generador {
     private Metodo toStringObject() {
         Entidad object = ts.getTipo("Object");
         if (object instanceof Clase) {
-            return ((Clase) object).getMetodos().get("toString/0");
+            Metodo toString = ((Clase) object).getMetodos().get("toString/0");
+            if (toString != null) {
+                // toString de Object ocupa siempre la entrada 0 de toda VT.
+                toString.setOffset(0);
+            }
+            return toString;
         }
         return null;
     }
@@ -337,18 +380,32 @@ public class Generador {
         rutinasHeap();
         vacia();
 
+        rutinasError();
+        vacia();
+
         for (Clase clase : ts.getClases().values()) {
             generarClase(clase);
         }
 
-        if (!literales.isEmpty()) {
-            cruda(".DATA");
-            for (Map.Entry<String, String> entrada : literales.entrySet()) {
-                emitirString(entrada.getValue(), entrada.getKey());
-            }
+        cruda(".DATA");
+        for (Map.Entry<String, String> entrada : literales.entrySet()) {
+            emitirString(entrada.getValue(), entrada.getKey());
         }
+        emitirString("lblMsgIndice", MENSAJE_ERROR_INDICE);
+        emitirString("lblMsgTamanio", MENSAJE_ERROR_TAMANIO);
 
         return String.join("\n", lineas) + "\n";
+    }
+
+    /** Rutinas que informan un error en tiempo de ejecucion y detienen la CeIVM. */
+    private void rutinasError() {
+        cruda(ETIQUETA_ERROR_INDICE + ": PUSH lblMsgIndice");
+        cruda("\tSPRINT");
+        cruda("\tHALT");
+        vacia();
+        cruda(ETIQUETA_ERROR_TAMANIO + ": PUSH lblMsgTamanio");
+        cruda("\tSPRINT");
+        cruda("\tHALT");
     }
 
     private Metodo buscarMain() {
@@ -462,7 +519,7 @@ public class Generador {
                 emit("LOAD 3", "apila el parametro");
                 emit("IPRINT", "imprime el entero en el tope de la pila");
             } else if (nombre.equals("toString")) {
-                emit("PUSH " + etiquetaString(""), "cadena vacia");
+                generarString("");
                 emit("STORE 4");
             }
         } else if (nombreClase.equals("System")) {
@@ -474,6 +531,11 @@ public class Generador {
             } else {
                 emit("LOAD 3", "apila el parametro");
                 if (nombre.startsWith("printS")) {
+                    emit("DUP", "controla que la referencia no sea nula");
+                    emit("DEREF");
+                    emit("POP");
+                    emit("PUSH 2", "puntero al primer caracter");
+                    emit("ADD");
                     emit("SPRINT", "imprime el string en el tope de la pila");
                 } else if (nombre.startsWith("printI")) {
                     emit("IPRINT", "imprime el entero en el tope de la pila");
@@ -490,8 +552,39 @@ public class Generador {
     }
 
     // ------------------------------------------------------------------
-    // Strings literales
+    // Strings
     // ------------------------------------------------------------------
+
+    /**
+     * Genera el codigo que crea en el .heap un String con el contenido dado y
+     * deja su referencia en el tope de la pila. La estructura es la de un
+     * arreglo de caracteres: VT, longitud, caracteres y terminador nulo.
+     */
+    public void generarString(String contenido) {
+        int n = contenido.length();
+        emit("RMEM 1", "celda del resultado");
+        emit("PUSH " + (n + 3), "tamano del String");
+        emit("PUSH simple_malloc");
+        emit("CALL");
+        emit("DUP");
+        emit("PUSH lblVTString", "VT del String");
+        emit("STOREREF 0");
+        emit("DUP");
+        emit("PUSH " + n);
+        emit("STOREREF 1", "longitud del String");
+        for (int i = 0; i < n; i++) {
+            emit("DUP");
+            emit("PUSH " + (i + 2));
+            emit("ADD");
+            emit("PUSH " + (int) contenido.charAt(i));
+            emit("STOREREF 0", "caracter " + i);
+        }
+        emit("DUP");
+        emit("PUSH " + (n + 2));
+        emit("ADD");
+        emit("PUSH 0");
+        emit("STOREREF 0", "terminador nulo");
+    }
 
     private void emitirString(String etiqueta, String contenido) {
         StringBuilder sb = new StringBuilder(etiqueta + ": DW ");

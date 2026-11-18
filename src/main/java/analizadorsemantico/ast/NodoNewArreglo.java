@@ -4,7 +4,6 @@ import java.util.List;
 
 import analizadorlexico.Token;
 import analizadorsemantico.Entidad;
-import analizadorsemantico.ExcepcionSemantica;
 import analizadorsemantico.Generador;
 import analizadorsemantico.InfoCheck;
 import analizadorsemantico.SemanticaUtil;
@@ -54,23 +53,51 @@ public class NodoNewArreglo extends NodoExpresion {
 
     @Override
     public void generar(Generador g) {
-        if (tamanios.size() == 1) {
-            generarUnaDimension(g);
-        } else if (tamanios.size() == 2) {
-            generarDosDimensiones(g);
-        } else {
-            throw new ExcepcionSemantica(token.getLexema(), token.getNroLinea(),
-                    "la generacion de codigo solo admite arreglos de hasta dos dimensiones");
+        int dimensiones = tamanios.size();
+        int[] dimTemp = new int[dimensiones];
+        for (int k = 0; k < dimensiones; k++) {
+            dimTemp[k] = g.reservarTemporal();
+        }
+
+        // Se evaluan y controlan todas las dimensiones de izquierda a derecha.
+        for (int k = 0; k < dimensiones; k++) {
+            tamanios.get(k).generar(g);
+            g.emit("STORE " + dimTemp[k], "guarda la dimension " + (k + 1));
+            g.emit("LOAD " + dimTemp[k]);
+            g.emit("PUSH 0");
+            g.emit("LT");
+            g.emit("BT " + Generador.ETIQUETA_ERROR_TAMANIO,
+                    "tamanio de arreglo negativo");
+        }
+
+        int niveles = dimensiones - 1;
+        int[] idxTemp = new int[niveles];
+        int[] refTemp = new int[niveles];
+        for (int k = 0; k < niveles; k++) {
+            idxTemp[k] = g.reservarTemporal();
+            refTemp[k] = g.reservarTemporal();
+        }
+
+        generarDimension(g, 0, dimTemp, idxTemp, refTemp);
+
+        for (int k = 0; k < niveles; k++) {
+            g.liberarTemporal();
+            g.liberarTemporal();
+        }
+        for (int k = 0; k < dimensiones; k++) {
+            g.liberarTemporal();
         }
     }
 
-    /** new T[E]: deja la referencia al arreglo creado en el tope de la pila. */
-    private void generarUnaDimension(Generador g) {
-        int nTemp = g.reservarTemporal();
-        tamanios.get(0).generar(g);
-        g.emit("STORE " + nTemp, "guarda la longitud");
+    /**
+     * Deja en el tope de la pila la referencia al arreglo correspondiente a la
+     * dimension indicada. Para las dimensiones que no son la ultima, recorre
+     * sus componentes y almacena en cada una el subarreglo construido.
+     */
+    private void generarDimension(Generador g, int nivel, int[] dimTemp,
+                                  int[] idxTemp, int[] refTemp) {
         g.emit("RMEM 1", "celda del resultado");
-        g.emit("LOAD " + nTemp);
+        g.emit("LOAD " + dimTemp[nivel]);
         g.emit("PUSH 2", "salta la VT y la longitud");
         g.emit("ADD");
         g.emit("PUSH simple_malloc");
@@ -79,74 +106,38 @@ public class NodoNewArreglo extends NodoExpresion {
         g.emit("PUSH lblVTObject", "VT del arreglo");
         g.emit("STOREREF 0");
         g.emit("DUP");
-        g.emit("LOAD " + nTemp);
+        g.emit("LOAD " + dimTemp[nivel]);
         g.emit("STOREREF 1", "inicializa la longitud");
-    }
 
-    /** new T[E1][E2]: crea el arreglo exterior y un subarreglo por componente. */
-    private void generarDosDimensiones(Generador g) {
-        int dimTemp = g.reservarTemporal();
-        int subTemp = g.reservarTemporal();
-        int refTemp = g.reservarTemporal();
-        int iTemp = g.reservarTemporal();
+        if (nivel == dimTemp.length - 1) {
+            return;
+        }
 
-        tamanios.get(0).generar(g);
-        g.emit("STORE " + dimTemp, "guarda la primera dimension");
-        tamanios.get(1).generar(g);
-        g.emit("STORE " + subTemp, "guarda la segunda dimension");
-
-        // Arreglo exterior.
-        g.emit("RMEM 1", "celda del resultado");
-        g.emit("LOAD " + dimTemp);
-        g.emit("PUSH 2");
-        g.emit("ADD");
-        g.emit("PUSH simple_malloc");
-        g.emit("CALL");
-        g.emit("DUP");
-        g.emit("PUSH lblVTObject");
-        g.emit("STOREREF 0");
-        g.emit("DUP");
-        g.emit("LOAD " + dimTemp);
-        g.emit("STOREREF 1");
-        g.emit("STORE " + refTemp, "guarda la referencia al arreglo exterior");
-
+        g.emit("STORE " + refTemp[nivel], "guarda la referencia al arreglo");
         g.emit("PUSH 0");
-        g.emit("STORE " + iTemp);
+        g.emit("STORE " + idxTemp[nivel]);
         String etiquetaInicio = g.nuevaEtiqueta("lArrIni");
         String etiquetaFin = g.nuevaEtiqueta("lArrFin");
         g.etiqueta(etiquetaInicio, "NOP");
-        g.emit("LOAD " + iTemp);
-        g.emit("LOAD " + dimTemp);
+        g.emit("LOAD " + idxTemp[nivel]);
+        g.emit("LOAD " + dimTemp[nivel]);
         g.emit("LT");
         g.emit("BF " + etiquetaFin);
 
-        // Subarreglo de la fila i.
-        g.emit("RMEM 1", "celda del resultado del subarreglo");
-        g.emit("LOAD " + subTemp);
-        g.emit("PUSH 2");
-        g.emit("ADD");
-        g.emit("PUSH simple_malloc");
-        g.emit("CALL");
-        g.emit("DUP");
-        g.emit("PUSH lblVTObject");
-        g.emit("STOREREF 0");
-        g.emit("DUP");
-        g.emit("LOAD " + subTemp);
-        g.emit("STOREREF 1");
-        // Almacena la referencia del subarreglo en refTemp[i].
-        g.emit("LOAD " + refTemp);
-        g.emit("LOAD " + iTemp);
+        generarDimension(g, nivel + 1, dimTemp, idxTemp, refTemp);
+        g.emit("LOAD " + refTemp[nivel]);
+        g.emit("LOAD " + idxTemp[nivel]);
         g.emit("ADD");
         g.emit("SWAP");
-        g.emit("STOREREF 2");
+        g.emit("STOREREF 2", "almacena el subarreglo en la componente");
 
-        g.emit("LOAD " + iTemp);
+        g.emit("LOAD " + idxTemp[nivel]);
         g.emit("PUSH 1");
         g.emit("ADD");
-        g.emit("STORE " + iTemp);
+        g.emit("STORE " + idxTemp[nivel]);
         g.emit("JUMP " + etiquetaInicio);
         g.etiqueta(etiquetaFin, "NOP");
 
-        g.emit("LOAD " + refTemp, "referencia al arreglo creado");
+        g.emit("LOAD " + refTemp[nivel], "referencia al arreglo creado");
     }
 }

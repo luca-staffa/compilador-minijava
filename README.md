@@ -16,7 +16,15 @@ información estructural, ámbitos locales y contexto estático.
 
 La Etapa 5 agrega el **Generador de Código**: calcula los offsets en el RA, el
 CIR y la VT y recorre la TS y los AST para emitir **código CeIASM** ejecutable
-en la CeIVM, que el módulo principal escribe en el archivo de salida.
+en la CeIVM, que el módulo principal escribe en el archivo de salida. Incluye el
+control del punto de entrada (`static void main()`), el control en ejecución de
+índices y tamaños de arreglos, la construcción de Strings en el `.heap` y el
+despacho virtual genérico.
+
+Cuando se pide un archivo de salida, el compilador exige exactamente un método
+`static void main()` sin parámetros: si falta (o no tiene esa forma) reporta
+`[Error:$|línea]` y si hay más de uno, `[Error:main|línea]` sobre el segundo. Si
+solo se analiza (sin archivo de salida), `main` no es obligatorio.
 
 ## Requisitos
 

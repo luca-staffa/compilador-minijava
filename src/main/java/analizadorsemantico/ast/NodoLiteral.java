@@ -48,8 +48,7 @@ public class NodoLiteral extends NodoExpresion {
             }
         } else if (tipo instanceof TipoReferencia
                 && ((TipoReferencia) tipo).getNombreReferencia().equals("String")) {
-            g.emit("PUSH " + g.etiquetaString(token.getLexema()),
-                    "apila el string " + token.getLexema());
+            g.generarString(Generador.desescapar(token.getLexema()));
         } else {
             g.emit("PUSH 0", "apila null");
         }
